@@ -82,4 +82,9 @@ class BrowserLocation
             return $default;
         }
     }
+
+    public function toJson(array $payload, int $options = 0): string
+    {
+        return json_encode($this->preparePayload($payload), $options) ?: '{}';
+    }
 }

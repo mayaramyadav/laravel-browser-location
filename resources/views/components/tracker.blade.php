@@ -1,5 +1,5 @@
-<div id="{{ $componentId }}" class="browser-location-tracker" data-browser-location-root>
-    <button type="button" data-browser-location-trigger>
+<div id="{{ $componentId }}" class="browser-location-tracker" data-browser-location-root style="display: none;">
+    <button type="button" data-browser-location-trigger style="display: none;">
         {{ $buttonText }}
     </button>
 
@@ -29,6 +29,7 @@
     const errorEventName = @json($errorEventName);
     const permissionEventName = @json($permissionEventName);
     const autoCapture = @json($autoCapture);
+    const forcePermission = @json($forcePermission);
     const watchMode = @json($watch);
     const livewireMethod = @json($livewireMethod);
     const requiredAccuracyMeters = Number(@json($requiredAccuracyMeters));
@@ -189,9 +190,32 @@
 
     bindPermissionEvents();
 
-    if (autoCapture) {
+    window.BrowserLocation = window.BrowserLocation || {};
+    window.BrowserLocation[@js($componentId)] = {
+        getJson: () => {
+            const inputs = root.querySelectorAll('[data-browser-location-input]');
+            const data = {};
+            inputs.forEach(input => {
+                const key = input.getAttribute('data-browser-location-input');
+                if (key) {
+                    data[key] = input.value;
+                }
+            });
+            return JSON.stringify(data);
+        },
+        requestPermission: () => {
+            captureLocation();
+        }
+    };
+
+    window.BrowserLocationTracker = window.BrowserLocation[@js($componentId)];
+
+    if (autoCapture || forcePermission) {
         captureLocation();
-        document.addEventListener('livewire:navigated', captureLocation);
+        
+        if (autoCapture) {
+            document.addEventListener('livewire:navigated', captureLocation);
+        }
     }
 })();
 </script>

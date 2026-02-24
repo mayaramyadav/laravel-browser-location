@@ -19,3 +19,21 @@ it('normalizes coordinate precision', function (): void {
     expect($service->normalizeLatitude(12.971598765))->toBe(12.9715988)
         ->and($service->normalizeLongitude(77.594562765))->toBe(77.5945628);
 });
+
+it('converts payload to json', function (): void {
+    $service = new BrowserLocation;
+
+    $payload = [
+        'latitude' => 12.9715987,
+        'longitude' => 77.5945627,
+        'accuracy_meters' => 15,
+    ];
+
+    $json = $service->toJson($payload);
+    $decoded = json_decode($json, true);
+
+    expect($decoded)->toHaveKey('latitude', 12.9715987)
+        ->and($decoded)->toHaveKey('longitude', 77.5945627)
+        ->and($decoded)->toHaveKey('accuracy_meters', 15)
+        ->and($decoded)->toHaveKey('accuracy_level', 'excellent');
+});

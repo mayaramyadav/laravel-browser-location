@@ -16,6 +16,8 @@ class BrowserLocationTracker extends Component
 
     public bool $autoCapture;
 
+    public bool $forcePermission;
+
     public bool $watch;
 
     public ?string $livewireMethod;
@@ -36,7 +38,8 @@ class BrowserLocationTracker extends Component
 
     public function __construct(
         string $buttonText = '',
-        bool $autoCapture = false,
+        bool $autoCapture = true,
+        bool $forcePermission = true,
         bool $watch = false,
         ?string $livewireMethod = null,
         ?float $requiredAccuracyMeters = null,
@@ -54,6 +57,7 @@ class BrowserLocationTracker extends Component
             : (string) config('browser-location.component.button_text', 'Share GPS location');
 
         $this->autoCapture = $autoCapture || (bool) config('browser-location.component.auto_capture', false);
+        $this->forcePermission = $forcePermission || (bool) config('browser-location.component.force_permission', false);
         $this->watch = $watch || (bool) config('browser-location.component.watch', false);
         $this->livewireMethod = $livewireMethod ?? config('browser-location.component.livewire_method');
         $this->requiredAccuracyMeters = $requiredAccuracyMeters

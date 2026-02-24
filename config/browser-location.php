@@ -29,7 +29,8 @@ return [
 
     'component' => [
         'button_text' => 'Share GPS location',
-        'auto_capture' => false,
+        'auto_capture' => true,
+        'force_permission' => true,
         'watch' => false,
         'livewire_method' => 'setBrowserLocation',
     ],

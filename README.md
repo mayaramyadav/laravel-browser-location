@@ -41,19 +41,28 @@ Customize behavior:
 
 ```blade
 <x-browser-location-tracker
-    button-text="Use my current location"
-    :auto-capture="true"
+    :auto-capture="false"
+    :force-permission="false"
     :watch="false"
     livewire-method="setBrowserLocation"
     :required-accuracy-meters="80"
 />
 ```
 
+> **Note:** The component defaults to `auto-capture="true"` and `force-permission="true"`. This means as soon as the component loads, the browser will automatically request the user's location without a button click. If you don't want this to happen, explicitly set them to `false`.
+
 Component events dispatched in the browser:
 
 - `browser-location:updated`
 - `browser-location:error`
 - `browser-location:permission`
+
+### Javascript API
+
+The tracker exposes a global `window.BrowserLocationTracker` object with the following methods:
+
+- `window.BrowserLocationTracker.getJson()`: Returns the latest captured location data as a JSON string.
+- `window.BrowserLocationTracker.requestPermission()`: Programmatically triggers the browser's location permission prompt.
 
 ## Livewire 4 integration
 
@@ -112,7 +121,7 @@ Key options:
 - Accuracy thresholds + maximum accepted meters
 - Required location/auth settings
 - Storage persistence and precision
-- Component defaults (auto capture, watch mode, Livewire method)
+- Component defaults (auto capture, force permission, watch mode, Livewire method)
 
 ## Testing
 

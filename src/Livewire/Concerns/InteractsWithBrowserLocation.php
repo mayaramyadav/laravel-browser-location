@@ -35,4 +35,9 @@ trait InteractsWithBrowserLocation
 
         return (float) $accuracy <= $allowedAccuracy;
     }
+
+    public function getBrowserLocationJson(int $options = 0): string
+    {
+        return json_encode($this->browserLocation, $options) ?: '{}';
+    }
 }
