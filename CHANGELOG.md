@@ -2,6 +2,10 @@
 
 All notable changes to `laravel-browser-location` will be documented in this file.
 
+## v1.0.3 - 2026-02-24
+
+**Full Changelog**: https://github.com/mayaramyadav/laravel-browser-location/compare/v1.0.2...v1.0.3
+
 ## v1.0.2 - 2026-02-24
 
 ### What's Changed
