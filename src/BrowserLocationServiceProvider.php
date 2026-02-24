@@ -22,10 +22,6 @@ class BrowserLocationServiceProvider extends ServiceProvider
 
     public function boot(Router $router): void
     {
-        if ((bool) config('browser-location.api.enabled', true)) {
-            $this->loadRoutesFrom(__DIR__.'/../routes/api.php');
-        }
-
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'browser-location');
 

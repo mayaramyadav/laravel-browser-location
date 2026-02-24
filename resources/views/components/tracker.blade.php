@@ -25,13 +25,11 @@
 
     const trigger = root.querySelector('[data-browser-location-trigger]');
     const status = root.querySelector('[data-browser-location-status]');
-    const endpoint = @json($endpoint);
     const eventName = @json($eventName);
     const errorEventName = @json($errorEventName);
     const permissionEventName = @json($permissionEventName);
     const autoCapture = @json($autoCapture);
     const watchMode = @json($watch);
-    const autoSave = @json($autoSave);
     const livewireMethod = @json($livewireMethod);
     const requiredAccuracyMeters = Number(@json($requiredAccuracyMeters));
 
@@ -41,7 +39,6 @@
         maximumAge: Number(@json($maximumAge)),
     };
 
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
     let watchId = null;
 
     const setStatus = (message) => {
@@ -127,34 +124,6 @@
         }
     };
 
-    const saveToApi = async (payload) => {
-        if (!autoSave || !endpoint) {
-            return;
-        }
-
-        try {
-            const response = await fetch(endpoint, {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Accept: 'application/json',
-                    ...(csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {}),
-                },
-                body: JSON.stringify(payload),
-            });
-
-            if (!response.ok) {
-                throw new Error(`API rejected location with status ${response.status}`);
-            }
-        } catch (error) {
-            emit(errorEventName, {
-                code: 0,
-                message: error instanceof Error ? error.message : 'Unable to send location to API.',
-            });
-        }
-    };
-
     const handleSuccess = (position) => {
         const payload = toPayload(position);
 
@@ -166,7 +135,6 @@
 
         emit(eventName, payload);
         callLivewire(payload);
-        saveToApi(payload);
     };
 
     const handleError = (error) => {
