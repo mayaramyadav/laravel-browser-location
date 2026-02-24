@@ -5,7 +5,7 @@ declare(strict_types=1);
 use Mayaram\BrowserLocation\BrowserLocation;
 
 it('classifies accuracy levels', function (): void {
-    $service = new BrowserLocation();
+    $service = new BrowserLocation;
 
     expect($service->accuracyLevel(10.5))->toBe('excellent')
         ->and($service->accuracyLevel(64.5))->toBe('good')
@@ -14,7 +14,7 @@ it('classifies accuracy levels', function (): void {
 });
 
 it('normalizes coordinate precision', function (): void {
-    $service = new BrowserLocation();
+    $service = new BrowserLocation;
 
     expect($service->normalizeLatitude(12.971598765))->toBe(12.9715988)
         ->and($service->normalizeLongitude(77.594562765))->toBe(77.5945628);

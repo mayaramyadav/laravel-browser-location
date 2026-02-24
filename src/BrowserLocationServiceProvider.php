@@ -17,7 +17,7 @@ class BrowserLocationServiceProvider extends ServiceProvider
     {
         $this->mergeConfigFrom(__DIR__.'/../config/browser-location.php', 'browser-location');
 
-        $this->app->singleton(BrowserLocation::class, fn (): BrowserLocation => new BrowserLocation());
+        $this->app->singleton(BrowserLocation::class, fn (): BrowserLocation => new BrowserLocation);
     }
 
     public function boot(Router $router): void
