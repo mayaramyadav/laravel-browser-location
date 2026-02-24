@@ -47,7 +47,7 @@ You can customize the component behavior by passing any of these props. Most def
 | -------------------------- | ------ | ------------------------------- | ---------------------------------------------------------------------------------------------------- |
 | `button-text`              | string | `'Share GPS location'`          | Text used if you trigger location capture via a button click.                                        |
 | `auto-capture`             | bool   | `true`                          | When `true`, automatically requests location on page load and Livewire navigation.                   |
-| `force-permission`         | bool   | `true`                          | When `true`, forces the permission prompt on page load.                                              |
+| `force-permission`         | bool   | `true`                          | When `true`, forces the permission prompt on page load and blocks UI until granted.                  |
 | `watch`                    | bool   | `false`                         | When `true`, continually watches and updates location using `navigator.geolocation.watchPosition()`. |
 | `livewire-method`          | string | `'setBrowserLocation'`          | The Livewire method to call on success (if inside a Livewire component).                             |
 | `required-accuracy-meters` | float  | `200`                           | Validates if the reading is accurate enough.                                                         |

@@ -42,6 +42,52 @@
 
     let watchId = null;
 
+    let overlayNode = null;
+
+    const createOverlay = () => {
+        if (overlayNode) return;
+        overlayNode = document.createElement('div');
+        overlayNode.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.75);z-index:999999;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:ui-sans-serif,system-ui,sans-serif;color:#111827;backdrop-filter:blur(4px);';
+        
+        const card = document.createElement('div');
+        card.style.cssText = 'background:#fff;padding:2.5rem;border-radius:1rem;max-width:90%;width:420px;text-align:center;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);';
+        
+        card.innerHTML = `
+            <svg style="width:64px;height:64px;margin:0 auto 1.5rem;color:#ef4444;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <h2 style="font-size:1.5rem;font-weight:700;margin-bottom:0.75rem;color:#111827;">Location Access Required</h2>
+            <p style="margin-bottom:2rem;font-size:1rem;color:#4b5563;line-height:1.5;">
+                This application requires your device's location to continue. Please enable location permissions for this site in your browser settings.
+            </p>
+            <button id="browser-location-retry-btn" style="background:#2563eb;color:#fff;padding:0.75rem 1.5rem;border-radius:0.5rem;border:none;font-weight:600;font-size:1rem;cursor:pointer;width:100%;transition:background 0.2s;">
+                I've Enabled It
+            </button>
+        `;
+        
+        overlayNode.appendChild(card);
+        overlayNode.style.display = 'none';
+        document.body.appendChild(overlayNode);
+        
+        document.getElementById('browser-location-retry-btn').addEventListener('click', () => {
+            captureLocation();
+        });
+    };
+
+    const toggleOverlay = (show) => {
+        if (!forcePermission) return;
+        
+        if (show) {
+            if (!overlayNode) createOverlay();
+            overlayNode.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        } else {
+            if (overlayNode) overlayNode.style.display = 'none';
+            document.body.style.overflow = '';
+        }
+    };
+
     const setStatus = (message) => {
         if (status) {
             status.textContent = message;
@@ -126,6 +172,8 @@
     };
 
     const handleSuccess = (position) => {
+        toggleOverlay(false);
+
         const payload = toPayload(position);
 
         updateInputs(payload);
@@ -154,6 +202,10 @@
             message,
             permission_state: error.code === 1 ? 'denied' : 'prompt',
         });
+
+        if (forcePermission && error.code === 1) {
+            toggleOverlay(true);
+        }
     };
 
     const captureLocation = () => {
@@ -179,7 +231,20 @@
             .query({ name: 'geolocation' })
             .then((result) => {
                 emit(permissionEventName, { state: result.state });
-                result.onchange = () => emit(permissionEventName, { state: result.state });
+                result.onchange = () => {
+                    emit(permissionEventName, { state: result.state });
+                    if (result.state === 'granted') {
+                        toggleOverlay(false);
+                        captureLocation();
+                    } else if (result.state === 'denied' && forcePermission) {
+                        toggleOverlay(true);
+                    }
+                };
+
+                // Show overlay immediately if already denied and forcePermission is true
+                if (result.state === 'denied' && forcePermission) {
+                    toggleOverlay(true);
+                }
             })
             .catch(() => {
                 // Ignore permission API failures and rely on geolocation callback errors.
