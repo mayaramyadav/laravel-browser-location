@@ -27,18 +27,10 @@ return [
         'coordinate_precision' => 7,
     ],
 
-    'api' => [
-        'enabled' => true,
-        'prefix' => 'api/browser-location',
-        'middleware' => ['api'],
-        'capture_middleware' => ['browser-location.validate'],
-    ],
-
     'component' => [
         'button_text' => 'Share GPS location',
         'auto_capture' => false,
         'watch' => false,
-        'auto_save' => true,
         'livewire_method' => 'setBrowserLocation',
     ],
 ];

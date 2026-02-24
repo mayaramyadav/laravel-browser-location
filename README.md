@@ -7,8 +7,7 @@ Capture browser-based GPS location in Laravel using the HTML5 Geolocation API.
 - Accurate GPS capture with HTML5 Geolocation
 - Livewire-friendly component and event bridge
 - Ready-to-use Blade component (`<x-browser-location-tracker />`)
-- SPA-friendly API capture with `fetch` (no page reload)
-- REST API endpoints for web and mobile frontends
+- SPA-friendly integration with Livewire navigation (no page reload)
 - Permission + error handling for denied/timeout/unavailable states
 - Accuracy detection (`excellent`, `good`, `poor`, `unknown`)
 - Auto-loaded package migration for `browser_locations` table
@@ -45,7 +44,6 @@ Customize behavior:
     button-text="Use my current location"
     :auto-capture="true"
     :watch="false"
-    :auto-save="true"
     livewire-method="setBrowserLocation"
     :required-accuracy-meters="80"
 />
@@ -86,26 +84,6 @@ Then include the tracker in the component view:
 <x-browser-location-tracker livewire-method="setBrowserLocation" />
 ```
 
-## REST API
-
-Default endpoints:
-
-- `POST /api/browser-location/capture`
-- `GET /api/browser-location/latest`
-
-Capture example:
-
-```bash
-curl -X POST http://localhost/api/browser-location/capture \
-  -H "Content-Type: application/json" \
-  -d '{
-    "latitude": 12.9715987,
-    "longitude": 77.5945627,
-    "accuracy_meters": 15.2,
-    "permission_state": "granted"
-  }'
-```
-
 ## Middleware
 
 Use `browser-location.validate` on protected routes:
@@ -131,7 +109,6 @@ Main config file: `config/browser-location.php`
 
 Key options:
 
-- API route prefix + middleware
 - Accuracy thresholds + maximum accepted meters
 - Required location/auth settings
 - Storage persistence and precision
