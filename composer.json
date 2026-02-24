@@ -1,46 +1,74 @@
 {
-    "name": ":vendor_slug/:package_slug",
-    "description": ":package_description",
+    "name": "mayaram/laravel-browser-location",
+    "description": "HTML5 browser geolocation package for Laravel with Livewire 4 support, GPS capture, reverse geocoding, maps, and API integration.",
     "keywords": [
-        ":vendor_name",
-        ":package_slug"
+        "Laravel Geolocation",
+        "HTML5 Geolocation",
+        "Livewire GPS",
+        "Browser Location",
+        "User Tracking Laravel",
+        "100% Free Laravel Geolocation",
+        "Laravel Geolocation API",
+        "Laravel Geolocation Middleware",
+        "Laravel Geolocation Service",
+        "Laravel Geolocation Package",
+        "Laravel Location Tracking",
+        "Laravel Location API",
+        "Laravel Location Middleware",
+        "Laravel Location Service",
+        "Laravel Location Package",
+        "Laravel Location Tracking",
+        "Laravel Location API",
+        "Laravel Location Middleware",
+        "Laravel Location Service",
+        "Laravel Location Package"
     ],
-    "homepage": "https://github.com/:vendor_slug/:package_slug",
+    "homepage": "https://github.com/mayaram/laravel-browser-location",
     "license": "MIT",
     "authors": [
         {
-            "name": ":author_name",
-            "email": "author@domain.com",
-            "role": "Developer"
+            "name": "Mayaram",
+            "email": "info@mayaram.in"
         }
     ],
     "require": {
-        "php": "^8.4"
+        "php": "^8.4",
+        "illuminate/support": "^11.0|^12.0"
     },
     "require-dev": {
-        :require_dev_testing,
-        :require_dev_codestyle,
-        "spatie/ray": "^1.28"
+        "pestphp/pest": "^3.0",
+        "pestphp/pest-plugin-laravel": "^3.0"
     },
     "autoload": {
         "psr-4": {
-            "VendorName\\Skeleton\\": "src"
+            "Mayaram\\BrowserLocation\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "VendorName\\Skeleton\\Tests\\": "tests"
+            "Mayaram\\BrowserLocation\\Tests\\": "tests/"
         }
     },
     "scripts": {
-        :scripts_testing,
-        :scripts_codestyle
+        "test": "vendor/bin/pest",
+        "test-coverage": "vendor/bin/pest --coverage",
+        "format": "vendor/bin/pint"
     },
     "config": {
         "sort-packages": true,
         "allow-plugins": {
-            :plugins_testing,
+            "pestphp/pest-plugin": true,
             "phpstan/extension-installer": true
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Mayaram\\BrowserLocation\\BrowserLocationServiceProvider"
+            ],
+            "aliases": {
+                "BrowserLocation": "Mayaram\\BrowserLocation\\Facades\\BrowserLocation"
+            }
         }
     },
     "minimum-stability": "dev",

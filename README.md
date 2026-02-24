@@ -1,42 +1,141 @@
-# :package_description
+# Laravel Browser Location
 
-[![Latest Version on Packagist](https://img.shields.io/packagist/v/:vendor_slug/:package_slug.svg?style=flat-square)](https://packagist.org/packages/:vendor_slug/:package_slug)
-[![Tests](https://img.shields.io/github/actions/workflow/status/:vendor_slug/:package_slug/run-tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/:vendor_slug/:package_slug/actions/workflows/run-tests.yml)
-[![Total Downloads](https://img.shields.io/packagist/dt/:vendor_slug/:package_slug.svg?style=flat-square)](https://packagist.org/packages/:vendor_slug/:package_slug)
-<!--delete-->
----
-This package can be used as to scaffold a framework agnostic package. Follow these steps to get started:
+Capture browser-based GPS location in Laravel using the HTML5 Geolocation API.
 
-1. Press the "Use template" button at the top of this repo to create a new repo with the contents of this skeleton
-2. Run "php ./configure.php" to run a script that will replace all placeholders throughout all the files
-3. Have fun creating your package.
-4. If you need help creating a package, consider picking up our <a href="https://laravelpackage.training">Laravel Package Training</a> video course.
----
-<!--/delete-->
-This is where your description should go. Try and limit it to a paragraph or two. Consider adding a small example.
+## Core features
 
-## Support us
-
-[<img src="https://github-ads.s3.eu-central-1.amazonaws.com/:package_name.jpg?t=1" width="419px" />](https://spatie.be/github-ad-click/:package_name)
-
-We invest a lot of resources into creating [best in class open source packages](https://spatie.be/open-source). You can support us by [buying one of our paid products](https://spatie.be/open-source/support-us).
-
-We highly appreciate you sending us a postcard from your hometown, mentioning which of our package(s) you are using. You'll find our address on [our contact page](https://spatie.be/about-us). We publish all received postcards on [our virtual postcard wall](https://spatie.be/open-source/postcards).
+- Accurate GPS capture with HTML5 Geolocation
+- Livewire-friendly component and event bridge
+- Ready-to-use Blade component (`<x-browser-location-tracker />`)
+- SPA-friendly API capture with `fetch` (no page reload)
+- REST API endpoints for web and mobile frontends
+- Permission + error handling for denied/timeout/unavailable states
+- Accuracy detection (`excellent`, `good`, `poor`, `unknown`)
+- Auto-loaded package migration for `browser_locations` table
+- One-command package setup (`php artisan browser-location:install`)
+- Config-driven behavior for API, validation, capture options, and storage
+- Middleware alias for route-level location validation (`browser-location.validate`)
 
 ## Installation
 
-You can install the package via composer:
+```bash
+composer require mayaram/laravel-browser-location
+```
+
+Run the installer command:
 
 ```bash
-composer require :vendor_slug/:package_slug
+php artisan browser-location:install
 ```
 
-## Usage
+This command publishes config/views/migrations and runs migrations.
+
+## Blade component
+
+Add the tracker anywhere in your Blade view:
+
+```blade
+<x-browser-location-tracker />
+```
+
+Customize behavior:
+
+```blade
+<x-browser-location-tracker
+    button-text="Use my current location"
+    :auto-capture="true"
+    :watch="false"
+    :auto-save="true"
+    livewire-method="setBrowserLocation"
+    :required-accuracy-meters="80"
+/>
+```
+
+Component events dispatched in the browser:
+
+- `browser-location:updated`
+- `browser-location:error`
+- `browser-location:permission`
+
+## Livewire 4 integration
+
+Use the provided trait in your Livewire component:
 
 ```php
-$skeleton = new VendorName\Skeleton();
-echo $skeleton->echoPhrase('Hello, VendorName!');
+<?php
+
+namespace App\Livewire;
+
+use Livewire\Component;
+use Mayaram\BrowserLocation\Livewire\Concerns\InteractsWithBrowserLocation;
+
+class CheckoutLocation extends Component
+{
+    use InteractsWithBrowserLocation;
+
+    public function onBrowserLocationUpdated(array $location): void
+    {
+        // Optional hook called after setBrowserLocation().
+    }
+}
 ```
+
+Then include the tracker in the component view:
+
+```blade
+<x-browser-location-tracker livewire-method="setBrowserLocation" />
+```
+
+## REST API
+
+Default endpoints:
+
+- `POST /api/browser-location/capture`
+- `GET /api/browser-location/latest`
+
+Capture example:
+
+```bash
+curl -X POST http://localhost/api/browser-location/capture \
+  -H "Content-Type: application/json" \
+  -d '{
+    "latitude": 12.9715987,
+    "longitude": 77.5945627,
+    "accuracy_meters": 15.2,
+    "permission_state": "granted"
+  }'
+```
+
+## Middleware
+
+Use `browser-location.validate` on protected routes:
+
+```php
+use Illuminate\Support\Facades\Route;
+
+Route::post('/checkout', CheckoutController::class)
+    ->middleware('browser-location.validate');
+```
+
+Middleware accepts payload from request body, `location` object, or `X-Browser-Location` JSON header.
+
+## Configuration
+
+Publish (if not already published):
+
+```bash
+php artisan vendor:publish --tag=browser-location-config
+```
+
+Main config file: `config/browser-location.php`
+
+Key options:
+
+- API route prefix + middleware
+- Accuracy thresholds + maximum accepted meters
+- Required location/auth settings
+- Storage persistence and precision
+- Component defaults (auto capture, watch mode, Livewire method)
 
 ## Testing
 
@@ -44,23 +143,6 @@ echo $skeleton->echoPhrase('Hello, VendorName!');
 composer test
 ```
 
-## Changelog
-
-Please see [CHANGELOG](CHANGELOG.md) for more information on what has changed recently.
-
-## Contributing
-
-Please see [CONTRIBUTING](https://github.com/spatie/.github/blob/main/CONTRIBUTING.md) for details.
-
-## Security Vulnerabilities
-
-Please review [our security policy](../../security/policy) on how to report security vulnerabilities.
-
-## Credits
-
-- [:author_name](https://github.com/:author_username)
-- [All Contributors](../../contributors)
-
 ## License
 
-The MIT License (MIT). Please see [License File](LICENSE.md) for more information.
+MIT
