@@ -29,44 +29,81 @@ php artisan browser-location:install
 
 This command publishes config/views/migrations and runs migrations.
 
-## Blade component
+## Usage: Blade component
 
-Add the tracker anywhere in your Blade view:
+Add the tracker anywhere in your Blade view. The easiest way is using the defaults:
 
 ```blade
 <x-browser-location-tracker />
 ```
 
-Customize behavior:
+> **Note:** By default, the component sets `auto-capture="true"` and `force-permission="true"`. This means as soon as the component loads, the browser will automatically request the user's location. If you don't want this to happen, explicitly set them to `false`.
+
+### All Package Options (Component Props)
+
+You can customize the component behavior by passing any of these props. Most default values come directly from your `config/browser-location.php` file:
+
+| Prop                       | Type   | Default                         | Description                                                                                          |
+| -------------------------- | ------ | ------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `button-text`              | string | `'Share GPS location'`          | Text used if you trigger location capture via a button click.                                        |
+| `auto-capture`             | bool   | `true`                          | When `true`, automatically requests location on page load and Livewire navigation.                   |
+| `force-permission`         | bool   | `true`                          | When `true`, forces the permission prompt on page load.                                              |
+| `watch`                    | bool   | `false`                         | When `true`, continually watches and updates location using `navigator.geolocation.watchPosition()`. |
+| `livewire-method`          | string | `'setBrowserLocation'`          | The Livewire method to call on success (if inside a Livewire component).                             |
+| `required-accuracy-meters` | float  | `200`                           | Validates if the reading is accurate enough.                                                         |
+| `enable-high-accuracy`     | bool   | `true`                          | Requests the most accurate reading possible from the device GPS.                                     |
+| `timeout`                  | int    | `12000`                         | Milliseconds the browser waits to get the location before timing out.                                |
+| `maximum-age`              | int    | `0`                             | Milliseconds a cached location is considered valid (`0` enforces a fresh reading).                   |
+| `event-name`               | string | `'browser-location:updated'`    | The JavaScript event dispatched on successful capture.                                               |
+| `error-event-name`         | string | `'browser-location:error'`      | The JavaScript event dispatched on error.                                                            |
+| `permission-event-name`    | string | `'browser-location:permission'` | The JavaScript event dispatched when permission state changes.                                       |
+
+**Example configuration overriding defaults:**
 
 ```blade
 <x-browser-location-tracker
+    button-text="Locate Me"
     :auto-capture="false"
     :force-permission="false"
-    :watch="false"
-    livewire-method="setBrowserLocation"
+    :watch="true"
+    :timeout="10000"
+    :enable-high-accuracy="true"
+    livewire-method="saveLocation"
     :required-accuracy-meters="80"
 />
 ```
 
-> **Note:** The component defaults to `auto-capture="true"` and `force-permission="true"`. This means as soon as the component loads, the browser will automatically request the user's location without a button click. If you don't want this to happen, explicitly set them to `false`.
+Component events dispatched natively in the browser on the `document`:
 
-Component events dispatched in the browser:
-
-- `browser-location:updated`
-- `browser-location:error`
-- `browser-location:permission`
+- `browser-location:updated` (Payload contains location details)
+- `browser-location:error` (Payload contains error code and message)
+- `browser-location:permission` (Payload contains permission state)
 
 ### Javascript API
 
-The tracker exposes a global `window.BrowserLocationTracker` object with the following methods:
+The tracker exposes a global `window.BrowserLocationTracker` object that you can use to programmatically interact with the component:
 
 - `window.BrowserLocationTracker.getJson()`: Returns the latest captured location data as a JSON string.
-- `window.BrowserLocationTracker.requestPermission()`: Programmatically triggers the browser's location permission prompt.
+- `window.BrowserLocationTracker.requestPermission()`: Programmatically triggers the browser's location permission prompt and captures location.
+
+## Configuration
+
+Publish the config file if you want to modify package-wide defaults:
+
+```bash
+php artisan vendor:publish --tag=browser-location-config
+```
+
+This creates `config/browser-location.php`. Here you can configure:
+
+- Accuracy thresholds + maximum accepted meters
+- Component defaults (auto capture, force permission, watch mode, Livewire method)
+- Required location/auth settings for middleware
+- Storage persistence and precision
 
 ## Livewire 4 integration
 
-Use the provided trait in your Livewire component:
+Use the provided trait in your Livewire component to automatically handle location updates:
 
 ```php
 <?php
@@ -82,20 +119,21 @@ class CheckoutLocation extends Component
 
     public function onBrowserLocationUpdated(array $location): void
     {
-        // Optional hook called after setBrowserLocation().
+        // Optional hook called after setBrowserLocation() updates the location state.
+        // You can access $location['latitude'], $location['longitude'], etc.
     }
 }
 ```
 
-Then include the tracker in the component view:
+Then include the tracker in your component's blade view:
 
 ```blade
 <x-browser-location-tracker livewire-method="setBrowserLocation" />
 ```
 
-## Middleware
+## Middleware Validation
 
-Use `browser-location.validate` on protected routes:
+Use `browser-location.validate` on protected routes to ensure a location is attached:
 
 ```php
 use Illuminate\Support\Facades\Route;
@@ -104,24 +142,7 @@ Route::post('/checkout', CheckoutController::class)
     ->middleware('browser-location.validate');
 ```
 
-Middleware accepts payload from request body, `location` object, or `X-Browser-Location` JSON header.
-
-## Configuration
-
-Publish (if not already published):
-
-```bash
-php artisan vendor:publish --tag=browser-location-config
-```
-
-Main config file: `config/browser-location.php`
-
-Key options:
-
-- Accuracy thresholds + maximum accepted meters
-- Required location/auth settings
-- Storage persistence and precision
-- Component defaults (auto capture, force permission, watch mode, Livewire method)
+The middleware accepts the location payload from the request body, a `location` object, or an `X-Browser-Location` JSON header.
 
 ## Testing
 
