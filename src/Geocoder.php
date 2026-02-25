@@ -24,8 +24,7 @@ class Geocoder implements GeocoderContract
         private readonly HttpFactory $http,
         private readonly CacheFactory $cache,
         private readonly ConfigRepository $config
-    ) {
-    }
+    ) {}
 
     /**
      * @param  array<string, mixed>  $options

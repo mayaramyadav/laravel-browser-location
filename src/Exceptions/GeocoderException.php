@@ -6,6 +6,4 @@ namespace Mayaram\BrowserLocation\Exceptions;
 
 use RuntimeException;
 
-class GeocoderException extends RuntimeException
-{
-}
+class GeocoderException extends RuntimeException {}

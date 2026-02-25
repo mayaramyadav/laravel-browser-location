@@ -146,9 +146,7 @@ function buildGeocoderService(HttpFactory $http, array $geocoderConfig): Geocode
     $cacheRepository = new CacheRepository(new ArrayStore);
     $cacheFactory = new class($cacheRepository) implements CacheFactory
     {
-        public function __construct(private readonly CacheRepository $repository)
-        {
-        }
+        public function __construct(private readonly CacheRepository $repository) {}
 
         public function store($name = null): CacheRepository
         {
