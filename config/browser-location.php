@@ -27,6 +27,17 @@ return [
         'coordinate_precision' => 7,
     ],
 
+    'auto_save' => (bool) env('BROWSER_LOCATION_AUTO_SAVE', true),
+    'min_accuracy' => (float) env('BROWSER_LOCATION_MIN_ACCURACY', 200),
+    'prevent_duplicates' => (bool) env('BROWSER_LOCATION_PREVENT_DUPLICATES', true),
+    'default_collection' => env('BROWSER_LOCATION_DEFAULT_COLLECTION', 'default'),
+    'capture_endpoint' => env('BROWSER_LOCATION_CAPTURE_ENDPOINT', '/browser-location/capture'),
+    'capture_rate_limit' => env('BROWSER_LOCATION_CAPTURE_RATE_LIMIT', '120,1'),
+    'allow_anonymous_capture' => (bool) env('BROWSER_LOCATION_ALLOW_ANONYMOUS_CAPTURE', true),
+    'allow_client_locationable_override' => (bool) env('BROWSER_LOCATION_ALLOW_CLIENT_LOCATIONABLE_OVERRIDE', false),
+    'max_meta_bytes' => (int) env('BROWSER_LOCATION_MAX_META_BYTES', 65535),
+    'allowed_locationable_models' => [],
+
     'component' => [
         'button_text' => 'Share GPS location',
         'auto_capture' => true,

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Mayaram\BrowserLocation\View\Components;
 
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Str;
 use Illuminate\View\Component;
@@ -36,6 +37,16 @@ class BrowserLocationTracker extends Component
 
     public string $permissionEventName;
 
+    public bool $autoSave;
+
+    public string $captureEndpoint;
+
+    public ?string $locationableType;
+
+    public string|int|null $locationableId;
+
+    public string $collectionName;
+
     public function __construct(
         string $buttonText = '',
         ?bool $autoCapture = null,
@@ -48,7 +59,12 @@ class BrowserLocationTracker extends Component
         ?bool $enableHighAccuracy = null,
         string $eventName = 'browser-location:updated',
         string $errorEventName = 'browser-location:error',
-        string $permissionEventName = 'browser-location:permission'
+        string $permissionEventName = 'browser-location:permission',
+        ?bool $autoSave = null,
+        ?string $captureEndpoint = null,
+        ?string $locationableType = null,
+        string|int|null $locationableId = null,
+        ?string $collectionName = null
     ) {
         $this->componentId = 'browser-location-'.Str::ulid();
 
@@ -68,10 +84,28 @@ class BrowserLocationTracker extends Component
         $this->eventName = $eventName;
         $this->errorEventName = $errorEventName;
         $this->permissionEventName = $permissionEventName;
+        $this->autoSave = $autoSave ?? (bool) config('browser-location.auto_save', true);
+        $this->captureEndpoint = $captureEndpoint ?? (string) config('browser-location.capture_endpoint', '/browser-location/capture');
+        $this->collectionName = $collectionName ?? (string) config('browser-location.default_collection', 'default');
+
+        $resolvedLocationable = $this->resolveLocationable();
+        $this->locationableType = $locationableType ?? $resolvedLocationable?->getMorphClass();
+        $this->locationableId = $locationableId ?? $resolvedLocationable?->getKey();
     }
 
     public function render(): View
     {
         return view('browser-location::components.tracker');
+    }
+
+    private function resolveLocationable(): ?Model
+    {
+        if (! (bool) config('browser-location.storage.attach_authenticated_user', true)) {
+            return null;
+        }
+
+        $user = auth()->user();
+
+        return $user instanceof Model ? $user : null;
     }
 }

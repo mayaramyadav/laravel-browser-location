@@ -36,7 +36,9 @@ class ValidateBrowserLocation
         $validated = Validator::make($payload, [
             'latitude' => ['required', 'numeric', 'between:-90,90'],
             'longitude' => ['required', 'numeric', 'between:-180,180'],
+            'accuracy' => ['nullable', 'numeric', 'min:0'],
             'accuracy_meters' => ['nullable', 'numeric', 'min:0'],
+            'address' => ['nullable', 'string', 'max:500'],
             'permission_state' => ['nullable', 'in:prompt,granted,denied'],
             'error_code' => ['nullable', 'integer', 'between:1,3'],
             'error_message' => ['nullable', 'string', 'max:500'],
@@ -44,6 +46,10 @@ class ValidateBrowserLocation
             'meta' => ['nullable', 'array'],
             'captured_at' => ['nullable', 'date'],
         ])->validate();
+
+        if (! isset($validated['accuracy_meters']) && isset($validated['accuracy'])) {
+            $validated['accuracy_meters'] = (float) $validated['accuracy'];
+        }
 
         $accuracy = isset($validated['accuracy_meters']) ? (float) $validated['accuracy_meters'] : null;
 
@@ -71,7 +77,9 @@ class ValidateBrowserLocation
         $direct = Arr::only($request->all(), [
             'latitude',
             'longitude',
+            'accuracy',
             'accuracy_meters',
+            'address',
             'permission_state',
             'error_code',
             'error_message',

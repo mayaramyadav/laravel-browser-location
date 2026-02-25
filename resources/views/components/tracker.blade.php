@@ -1,4 +1,4 @@
-<div id="{{ $componentId }}" class="browser-location-tracker" data-browser-location-root style="display: none;">
+<div id="{{ $componentId }}" class="browser-location-tracker" data-browser-location-root wire:ignore style="display: none;">
     <button type="button" data-browser-location-trigger style="display: none;">
         {{ $buttonText }}
     </button>
@@ -33,6 +33,12 @@
     const watchMode = @json($watch);
     const livewireMethod = @json($livewireMethod);
     const requiredAccuracyMeters = Number(@json($requiredAccuracyMeters));
+    const autoSave = @json($autoSave);
+    const captureEndpoint = @json($captureEndpoint);
+    const collectionName = @json($collectionName);
+    const locationableType = @json($locationableType);
+    const locationableId = @json($locationableId);
+    const csrfTokenFromServer = @json(csrf_token());
     const componentLockId = @js($componentId);
 
     const geoOptions = {
@@ -401,8 +407,69 @@
                 altitude_accuracy: position.coords.altitudeAccuracy,
                 heading: position.coords.heading,
                 speed: position.coords.speed,
+                raw_position: {
+                    coords: {
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude,
+                        accuracy: position.coords.accuracy,
+                        altitude: position.coords.altitude,
+                        altitudeAccuracy: position.coords.altitudeAccuracy,
+                        heading: position.coords.heading,
+                        speed: position.coords.speed,
+                    },
+                    timestamp: position.timestamp,
+                },
             },
         };
+    };
+
+    const persistLocation = async (payload) => {
+        if (!autoSave || !captureEndpoint) {
+            return null;
+        }
+
+        const headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+        };
+
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || csrfTokenFromServer;
+        if (csrfToken) {
+            headers['X-CSRF-TOKEN'] = csrfToken;
+        }
+
+        const requestPayload = {
+            ...payload,
+            collection_name: collectionName,
+            locationable_type: locationableType,
+            locationable_id: locationableId,
+            raw_browser_gps: payload.meta?.raw_position ?? null,
+        };
+
+        try {
+            const response = await fetch(captureEndpoint, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers,
+                body: JSON.stringify(requestPayload),
+            });
+
+            const json = await response.json().catch(() => ({}));
+            emit('browser-location:saved', {
+                ok: response.ok,
+                ...json,
+            });
+
+            return json;
+        } catch (error) {
+            emit('browser-location:save-error', {
+                message: 'Failed to persist browser location.',
+                detail: error instanceof Error ? error.message : String(error),
+            });
+
+            return null;
+        }
     };
 
     const callLivewire = (payload) => {
@@ -424,7 +491,7 @@
         }
     };
 
-    const handleSuccess = (position) => {
+    const handleSuccess = async (position) => {
         currentPermissionState = 'granted';
         toggleOverlay(false);
 
@@ -435,6 +502,16 @@
         setStatus(payload.is_accurate
             ? `Location captured (accuracy ${payload.accuracy_meters}m).`
             : `Location captured, but accuracy is low (${payload.accuracy_meters}m).`);
+
+        const persistenceResult = await persistLocation(payload);
+        if (persistenceResult && persistenceResult.saved === true) {
+            payload.meta = payload.meta || {};
+            payload.meta.persistence = {
+                saved: true,
+                id: persistenceResult.location_id,
+                collection_name: persistenceResult.collection_name ?? collectionName,
+            };
+        }
 
         emit(permissionEventName, { state: 'granted' });
         emit(eventName, payload);

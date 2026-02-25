@@ -12,6 +12,8 @@ Capture browser-based GPS location in Laravel using the HTML5 Geolocation API.
 - Accuracy detection (`excellent`, `good`, `poor`, `unknown`)
 - Provider-based geocoding + reverse geocoding (Google, Mapbox, OpenStreetMap)
 - Cache-ready geocoder responses for fast repeated lookups
+- Spatie-style location collections with polymorphic model ownership
+- Automatic DB persistence from tracker capture (`JS -> API -> Laravel`)
 - Auto-loaded package migration for `browser_locations` table
 - One-command package setup (`php artisan browser-location:install`)
 - Config-driven behavior for API, validation, capture options, and storage
@@ -56,6 +58,11 @@ You can customize the component behavior by passing any of these props. Most def
 | `enable-high-accuracy`     | bool   | `true`                          | Requests the most accurate reading possible from the device GPS.                                     |
 | `timeout`                  | int    | `12000`                         | Milliseconds the browser waits to get the location before timing out.                                |
 | `maximum-age`              | int    | `0`                             | Milliseconds a cached location is considered valid (`0` enforces a fresh reading).                   |
+| `auto-save`                | bool   | `true`                          | Automatically sends successful captures to the package save endpoint.                                 |
+| `capture-endpoint`         | string | `'/browser-location/capture'`   | Endpoint used by JS for automatic persistence.                                                        |
+| `collection-name`          | string | `'default'`                     | Target location collection name for automatic save.                                                   |
+| `locationable-type`        | string | `auth user morph class`         | Optional explicit location owner model class (must be allow-listed).                                 |
+| `locationable-id`          | mixed  | `auth user key`                 | Optional explicit location owner key.                                                                 |
 | `event-name`               | string | `'browser-location:updated'`    | The JavaScript event dispatched on successful capture.                                               |
 | `error-event-name`         | string | `'browser-location:error'`      | The JavaScript event dispatched on error.                                                            |
 | `permission-event-name`    | string | `'browser-location:permission'` | The JavaScript event dispatched when permission state changes.                                       |
@@ -80,6 +87,8 @@ Component events dispatched natively in the browser on the `document`:
 - `browser-location:updated` (Payload contains location details)
 - `browser-location:error` (Payload contains error code and message)
 - `browser-location:permission` (Payload contains permission state)
+- `browser-location:saved` (Payload contains persistence result from package endpoint)
+- `browser-location:save-error` (Payload contains persistence request error details)
 
 ### Javascript API
 
@@ -199,6 +208,80 @@ class CheckoutController
 - For OpenStreetMap/Nominatim, always provide a real `user_agent` and contact email.
 - Catch `Mayaram\BrowserLocation\Exceptions\GeocoderException` at your application boundary and return user-safe errors.
 
+## Location persistence collections
+
+The package stores captured locations in `browser_locations` with polymorphic ownership and collection names.
+
+### 1) Add the `HasLocations` trait to your model
+
+```php
+<?php
+
+namespace App\Models;
+
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Mayaram\BrowserLocation\Concerns\HasLocations;
+
+class User extends Authenticatable
+{
+    use HasLocations;
+}
+```
+
+### 2) Save locations manually (Spatie-style API)
+
+```php
+$user->addLocation($data)->toLocationCollection('checkins');
+
+$order->addLocation($data)->toLocationCollection('delivery');
+
+$user->addLocation($data)->toSingleLocationCollection('live');
+```
+
+### 3) Read stored locations
+
+```php
+$latest = $user->getLatestLocation();
+$visits = $user->getLocations('visits');
+```
+
+### 4) Automatic saving flow (no manual save required)
+
+When `<x-browser-location-tracker />` captures location, the package:
+
+1. Sends payload to `POST /browser-location/capture`
+2. Validates via `browser-location.validate`
+3. Applies quality checks (accuracy + anti-duplicate rules)
+4. Persists in `browser_locations`
+
+The endpoint also enriches `meta` with:
+
+- Raw browser GPS payload
+- Raw geocoder payload
+- Request IP and user-agent
+- Timestamp and app metadata
+
+### Persistence config
+
+```php
+// config/browser-location.php
+'auto_save' => true,
+'min_accuracy' => 200,
+'prevent_duplicates' => true,
+'default_collection' => 'default',
+'capture_endpoint' => '/browser-location/capture',
+```
+
+### Optional explicit locationable models
+
+For security, explicit `locationable_type` + `locationable_id` are only accepted if class is allow-listed:
+
+```php
+'allowed_locationable_models' => [
+    App\Models\Order::class,
+],
+```
+
 ## Livewire 4 integration
 
 Use the provided trait in your Livewire component to automatically handle location updates:
@@ -215,6 +298,12 @@ class CheckoutLocation extends Component
 {
     use InteractsWithBrowserLocation;
 
+    // Optional: return the model to attach persisted locations to.
+    public function getBrowserLocationable(): ?\Illuminate\Database\Eloquent\Model
+    {
+        return auth()->user();
+    }
+
     public function onBrowserLocationUpdated(array $location): void
     {
         // Optional hook called after setBrowserLocation() updates the location state.
@@ -228,6 +317,8 @@ Then include the tracker in your component's blade view:
 ```blade
 <x-browser-location-tracker livewire-method="setBrowserLocation" />
 ```
+
+`x-browser-location-tracker` renders with `wire:ignore` so re-renders do not interrupt the browser permission / capture lifecycle.
 
 ## Middleware Validation
 

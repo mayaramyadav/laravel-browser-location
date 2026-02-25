@@ -12,16 +12,20 @@ class BrowserLocation
 {
     public function preparePayload(array $payload): array
     {
-        $accuracy = isset($payload['accuracy_meters']) ? round(max(0, (float) $payload['accuracy_meters']), 2) : null;
+        $accuracyInput = $payload['accuracy_meters'] ?? $payload['accuracy'] ?? null;
+        $accuracy = $accuracyInput !== null ? round(max(0, (float) $accuracyInput), 2) : null;
         $capturedAt = Arr::get($payload, 'captured_at', now());
+        $address = Arr::get($payload, 'address');
 
         return [
             'user_id' => Arr::get($payload, 'user_id'),
             'latitude' => isset($payload['latitude']) ? $this->normalizeLatitude((float) $payload['latitude']) : null,
             'longitude' => isset($payload['longitude']) ? $this->normalizeLongitude((float) $payload['longitude']) : null,
+            'accuracy' => $accuracy,
             'accuracy_meters' => $accuracy,
             'accuracy_level' => $this->accuracyLevel($accuracy),
             'is_accurate' => $this->isAccuracyAcceptable($accuracy),
+            'address' => is_string($address) && trim($address) !== '' ? trim($address) : null,
             'permission_state' => Arr::get($payload, 'permission_state'),
             'error_code' => Arr::get($payload, 'error_code'),
             'error_message' => Arr::get($payload, 'error_message'),

@@ -12,12 +12,16 @@ return new class extends Migration
     {
         Schema::create('browser_locations', function (Blueprint $table): void {
             $table->id();
+            $table->nullableMorphs('locationable');
+            $table->string('collection_name', 100)->default('default')->index();
             $table->unsignedBigInteger('user_id')->nullable()->index();
             $table->decimal('latitude', 10, 7);
             $table->decimal('longitude', 10, 7);
+            $table->decimal('accuracy', 8, 2)->nullable();
             $table->decimal('accuracy_meters', 8, 2)->nullable();
             $table->string('accuracy_level', 20)->nullable();
             $table->boolean('is_accurate')->default(false);
+            $table->string('address')->nullable();
             $table->string('permission_state', 20)->nullable();
             $table->unsignedTinyInteger('error_code')->nullable();
             $table->string('error_message', 500)->nullable();
