@@ -2,6 +2,32 @@
 
 Capture browser-based GPS location in Laravel using the HTML5 Geolocation API.
 
+## Table of Contents
+
+- [Core features](#core-features)
+- [Installation](#installation)
+- [Usage: Blade component](#usage-blade-component)
+    - [All Package Options (Component Props)](#all-package-options-component-props)
+    - [Javascript API](#javascript-api)
+- [Configuration](#configuration)
+- [Geocoder service (Google / Mapbox / OpenStreetMap)](#geocoder-service-google--mapbox--openstreetmap)
+    - [Configure provider in `.env`](#configure-provider-in-env)
+    - [Usage via facade](#usage-via-facade)
+    - [Usage via dependency injection (preferred)](#usage-via-dependency-injection-preferred)
+    - [Normalized response shape](#normalized-response-shape)
+    - [Best practices](#best-practices)
+- [Location persistence collections](#location-persistence-collections)
+    - [1) Add the `HasLocations` trait to your model](#1-add-the-haslocations-trait-to-your-model)
+    - [2) Save locations manually (Spatie-style API)](#2-save-locations-manually-spatie-style-api)
+    - [3) Read stored locations](#3-read-stored-locations)
+    - [4) Automatic saving flow (no manual save required)](#4-automatic-saving-flow-no-manual-save-required)
+    - [Persistence config](#persistence-config)
+    - [Optional explicit locationable models](#optional-explicit-locationable-models)
+- [Livewire 4 integration](#livewire-4-integration)
+- [Middleware Validation](#middleware-validation)
+- [Testing](#testing)
+- [License](#license)
+
 ## Core features
 
 - Accurate GPS capture with HTML5 Geolocation
@@ -58,11 +84,11 @@ You can customize the component behavior by passing any of these props. Most def
 | `enable-high-accuracy`     | bool   | `true`                          | Requests the most accurate reading possible from the device GPS.                                     |
 | `timeout`                  | int    | `12000`                         | Milliseconds the browser waits to get the location before timing out.                                |
 | `maximum-age`              | int    | `0`                             | Milliseconds a cached location is considered valid (`0` enforces a fresh reading).                   |
-| `auto-save`                | bool   | `true`                          | Automatically sends successful captures to the package save endpoint.                                 |
-| `capture-endpoint`         | string | `'/browser-location/capture'`   | Endpoint used by JS for automatic persistence.                                                        |
-| `collection-name`          | string | `'default'`                     | Target location collection name for automatic save.                                                   |
+| `auto-save`                | bool   | `true`                          | Automatically sends successful captures to the package save endpoint.                                |
+| `capture-endpoint`         | string | `'/browser-location/capture'`   | Endpoint used by JS for automatic persistence.                                                       |
+| `collection-name`          | string | `'default'`                     | Target location collection name for automatic save.                                                  |
 | `locationable-type`        | string | `auth user morph class`         | Optional explicit location owner model class (must be allow-listed).                                 |
-| `locationable-id`          | mixed  | `auth user key`                 | Optional explicit location owner key.                                                                 |
+| `locationable-id`          | mixed  | `auth user key`                 | Optional explicit location owner key.                                                                |
 | `event-name`               | string | `'browser-location:updated'`    | The JavaScript event dispatched on successful capture.                                               |
 | `error-event-name`         | string | `'browser-location:error'`      | The JavaScript event dispatched on error.                                                            |
 | `permission-event-name`    | string | `'browser-location:permission'` | The JavaScript event dispatched when permission state changes.                                       |
