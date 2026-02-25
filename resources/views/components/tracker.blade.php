@@ -33,6 +33,7 @@
     const watchMode = @json($watch);
     const livewireMethod = @json($livewireMethod);
     const requiredAccuracyMeters = Number(@json($requiredAccuracyMeters));
+    const componentLockId = @js($componentId);
 
     const geoOptions = {
         enableHighAccuracy: @json($enableHighAccuracy),
@@ -40,33 +41,190 @@
         maximumAge: Number(@json($maximumAge)),
     };
 
+    const forceGate = (() => {
+        if (window.__browserLocationForceGate) {
+            return window.__browserLocationForceGate;
+        }
+
+        window.__browserLocationForceGate = {
+            locks: new Set(),
+            styleInjected: false,
+            ensureStyle() {
+                if (this.styleInjected) {
+                    return;
+                }
+
+                const styleNode = document.createElement('style');
+                styleNode.id = 'browser-location-force-gate-style';
+                styleNode.textContent = `
+                    html[data-browser-location-force-locked="1"] body > :not([data-browser-location-force-overlay="1"]) {
+                        display: none !important;
+                    }
+                `;
+
+                document.head.appendChild(styleNode);
+                this.styleInjected = true;
+            },
+            update() {
+                if (this.locks.size > 0) {
+                    document.documentElement.setAttribute('data-browser-location-force-locked', '1');
+                } else {
+                    document.documentElement.removeAttribute('data-browser-location-force-locked');
+                }
+            },
+            lock(lockId) {
+                this.ensureStyle();
+                this.locks.add(lockId);
+                this.update();
+            },
+            unlock(lockId) {
+                this.locks.delete(lockId);
+                this.update();
+            },
+        };
+
+        return window.__browserLocationForceGate;
+    })();
+
     let watchId = null;
     let currentPermissionState = forcePermission ? 'prompt' : null;
 
     let overlayNode = null;
+    let overlayCardNode = null;
+    let overlayIconNode = null;
     let overlayTitleNode = null;
+    let overlayLeadNode = null;
     let overlayMessageNode = null;
     let overlayActionNode = null;
+    let overlayCurrentState = 'prompt';
+
+    const resolveColorMode = () => {
+        const dataTheme = (document.documentElement.getAttribute('data-theme') || '').toLowerCase();
+        const rootIsDark = document.documentElement.classList.contains('dark');
+        const dataThemeIsDark = dataTheme === 'dark';
+        const systemIsDark = window.matchMedia
+            && window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+        return rootIsDark || dataThemeIsDark || systemIsDark ? 'dark' : 'light';
+    };
+
+    const themeTokens = {
+        light: {
+            backdrop: '#e5e7eb',
+            card: '#ffffff',
+            border: '#e5e7eb',
+            title: '#111827',
+            titleDanger: '#ef4444',
+            lead: '#111827',
+            text: '#4b5563',
+            iconPrimary: '#0ea5e9',
+            iconDanger: '#ef4444',
+            iconMuted: '#9ca3af',
+            buttonPrimary: '#2563eb',
+            buttonDanger: '#6d28d9',
+            buttonText: '#ffffff',
+        },
+        dark: {
+            backdrop: 'rgba(3, 7, 18, 0.96)',
+            card: '#111827',
+            border: '#1f2937',
+            title: '#f9fafb',
+            titleDanger: '#f87171',
+            lead: '#f3f4f6',
+            text: '#d1d5db',
+            iconPrimary: '#38bdf8',
+            iconDanger: '#f87171',
+            iconMuted: '#9ca3af',
+            buttonPrimary: '#2563eb',
+            buttonDanger: '#7c3aed',
+            buttonText: '#ffffff',
+        },
+    };
+
+    const stateIcon = (tone) => {
+        if (tone === 'danger') {
+            return `<svg style="width:76px;height:76px;" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M1.43 20.25h21.14c1.08 0 1.75-1.17 1.2-2.1L13.2 2.43c-.54-.9-1.86-.9-2.4 0L.23 18.15c-.55.93.12 2.1 1.2 2.1zM11 9h2v5h-2V9zm0 7h2v2h-2v-2z"/></svg>`;
+        }
+
+        if (tone === 'muted') {
+            return `<svg style="width:76px;height:76px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" /></svg>`;
+        }
+
+        return `<svg style="width:76px;height:76px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>`;
+    };
 
     const overlayMessages = {
         prompt: {
-            title: 'Location Access Required',
-            message: 'To continue, allow location access for this site in your browser permission prompt.',
+            title: 'Location Permission Required',
+            lead: 'Allow location access to continue.',
+            message: 'Use browser permission prompt and press Enable Location.',
             buttonLabel: 'Enable Location',
+            tone: 'primary',
+            action: 'retry',
             showAction: true,
+            iconTone: 'primary',
         },
         denied: {
-            title: 'Location Access Blocked',
-            message: 'Location permission is blocked. Enable it in your browser site settings, then retry.',
-            buttonLabel: "I Have Enabled It",
+            title: 'Location Access Required',
+            lead: 'Access Denied.',
+            message: 'Location permission is blocked. Enable it in browser site settings, then press Retry.',
+            buttonLabel: 'I have enabled it, Retry',
+            tone: 'danger',
+            action: 'reload',
             showAction: true,
+            iconTone: 'danger',
         },
         unsupported: {
             title: 'Location Not Supported',
-            message: 'This browser does not support geolocation, so this page cannot continue while forced permission is enabled.',
+            lead: 'Geolocation unavailable.',
+            message: 'This browser does not support geolocation, so the page cannot continue in force-permission mode.',
             buttonLabel: '',
+            tone: 'primary',
+            action: 'none',
             showAction: false,
+            iconTone: 'muted',
         },
+    };
+
+    const applyOverlayTheme = () => {
+        if (!overlayNode || !overlayCardNode) {
+            return;
+        }
+
+        const mode = resolveColorMode();
+        const theme = themeTokens[mode];
+        const content = overlayMessages[overlayCurrentState] ?? overlayMessages.prompt;
+
+        overlayNode.style.background = theme.backdrop;
+        overlayCardNode.style.background = theme.card;
+        overlayCardNode.style.borderColor = theme.border;
+
+        if (overlayTitleNode) {
+            overlayTitleNode.style.color = content.tone === 'danger' ? theme.titleDanger : theme.title;
+        }
+
+        if (overlayLeadNode) {
+            overlayLeadNode.style.color = theme.lead;
+        }
+
+        if (overlayMessageNode) {
+            overlayMessageNode.style.color = theme.text;
+        }
+
+        if (overlayActionNode) {
+            overlayActionNode.style.background = content.tone === 'danger' ? theme.buttonDanger : theme.buttonPrimary;
+            overlayActionNode.style.color = theme.buttonText;
+        }
+
+        if (overlayIconNode) {
+            if (content.iconTone === 'danger') {
+                overlayIconNode.style.color = theme.iconDanger;
+            } else if (content.iconTone === 'muted') {
+                overlayIconNode.style.color = theme.iconMuted;
+            } else {
+                overlayIconNode.style.color = theme.iconPrimary;
+            }
+        }
     };
 
     const setOverlayState = (state = 'prompt') => {
@@ -75,9 +233,22 @@
         }
 
         const content = overlayMessages[state] ?? overlayMessages.prompt;
+        overlayCurrentState = state;
+
+        if (overlayNode) {
+            overlayNode.dataset.state = state;
+        }
+
+        if (overlayIconNode) {
+            overlayIconNode.innerHTML = stateIcon(content.iconTone);
+        }
 
         if (overlayTitleNode) {
             overlayTitleNode.textContent = content.title;
+        }
+
+        if (overlayLeadNode) {
+            overlayLeadNode.textContent = content.lead;
         }
 
         if (overlayMessageNode) {
@@ -88,6 +259,8 @@
             overlayActionNode.textContent = content.buttonLabel;
             overlayActionNode.style.display = content.showAction ? 'inline-flex' : 'none';
         }
+
+        applyOverlayTheme();
     };
 
     const createOverlay = () => {
@@ -96,35 +269,52 @@
         }
 
         overlayNode = document.createElement('div');
-        overlayNode.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:#111827;z-index:999999;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:ui-sans-serif,system-ui,sans-serif;color:#111827;';
+        overlayNode.setAttribute('data-browser-location-force-overlay', '1');
+        overlayNode.style.cssText = 'position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;padding:1.5rem;font-family:ui-sans-serif,system-ui,sans-serif;';
 
-        const card = document.createElement('div');
-        card.style.cssText = 'background:#fff;padding:2.5rem;border-radius:1rem;max-width:90%;width:420px;text-align:center;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);';
+        overlayCardNode = document.createElement('div');
+        overlayCardNode.style.cssText = 'padding:2.5rem 2.25rem;border-radius:1rem;width:min(100%,560px);text-align:center;box-shadow:0 25px 60px -20px rgba(15,23,42,0.45);border:1px solid;';
 
-        card.innerHTML = `
-            <svg style="width:64px;height:64px;margin:0 auto 1.5rem;color:#ef4444;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            <h2 data-browser-location-overlay-title style="font-size:1.5rem;font-weight:700;margin-bottom:0.75rem;color:#111827;"></h2>
-            <p data-browser-location-overlay-message style="margin-bottom:2rem;font-size:1rem;color:#4b5563;line-height:1.5;"></p>
-            <button type="button" data-browser-location-overlay-action style="background:#2563eb;color:#fff;padding:0.75rem 1.5rem;border-radius:0.5rem;border:none;font-weight:600;font-size:1rem;cursor:pointer;width:100%;transition:background 0.2s;display:inline-flex;align-items:center;justify-content:center;">
-                Enable Location
+        overlayCardNode.innerHTML = `
+            <div data-browser-location-overlay-icon style="display:flex;justify-content:center;margin-bottom:1.25rem;"></div>
+            <h2 data-browser-location-overlay-title style="font-size:clamp(1.85rem,2.8vw,2.35rem);font-weight:800;line-height:1.15;margin:0;"></h2>
+            <p data-browser-location-overlay-lead style="font-size:clamp(1.3rem,2.2vw,1.85rem);font-weight:700;line-height:1.22;margin:0.9rem 0 0;"></p>
+            <p data-browser-location-overlay-message style="font-size:clamp(1.08rem,1.8vw,1.35rem);line-height:1.5;margin:0.8rem 0 2rem;"></p>
+            <button type="button" data-browser-location-overlay-action style="padding:0.85rem 1.5rem;border-radius:0.65rem;border:none;font-weight:700;font-size:clamp(1rem,1.45vw,1.2rem);cursor:pointer;width:min(100%,420px);display:inline-flex;align-items:center;justify-content:center;transition:all 0.2s ease;">
             </button>
         `;
 
-        overlayTitleNode = card.querySelector('[data-browser-location-overlay-title]');
-        overlayMessageNode = card.querySelector('[data-browser-location-overlay-message]');
-        overlayActionNode = card.querySelector('[data-browser-location-overlay-action]');
+        overlayIconNode = overlayCardNode.querySelector('[data-browser-location-overlay-icon]');
+        overlayTitleNode = overlayCardNode.querySelector('[data-browser-location-overlay-title]');
+        overlayLeadNode = overlayCardNode.querySelector('[data-browser-location-overlay-lead]');
+        overlayMessageNode = overlayCardNode.querySelector('[data-browser-location-overlay-message]');
+        overlayActionNode = overlayCardNode.querySelector('[data-browser-location-overlay-action]');
 
         overlayActionNode?.addEventListener('click', () => {
-            setOverlayState('prompt');
-            captureLocation();
+            const content = overlayMessages[overlayCurrentState] ?? overlayMessages.prompt;
+
+            if (content.action === 'reload') {
+                window.location.reload();
+            } else if (content.action === 'retry') {
+                setOverlayState('prompt');
+                captureLocation();
+            }
         });
 
-        overlayNode.appendChild(card);
+        overlayNode.appendChild(overlayCardNode);
         overlayNode.style.display = 'none';
         document.body.appendChild(overlayNode);
+
+        const colorScheme = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+        if (colorScheme && typeof colorScheme.addEventListener === 'function') {
+            colorScheme.addEventListener('change', applyOverlayTheme);
+        }
+
+        const classObserver = new MutationObserver(applyOverlayTheme);
+        classObserver.observe(document.documentElement, {
+            attributes: true,
+            attributeFilter: ['class', 'data-theme'],
+        });
 
         setOverlayState('prompt');
     };
@@ -139,15 +329,15 @@
                 createOverlay();
             }
 
+            forceGate.lock(componentLockId);
             setOverlayState(state);
             overlayNode.style.display = 'flex';
-            document.body.style.overflow = 'hidden';
         } else {
+            forceGate.unlock(componentLockId);
+
             if (overlayNode) {
                 overlayNode.style.display = 'none';
             }
-
-            document.body.style.overflow = '';
         }
     };
 
@@ -345,6 +535,15 @@
     };
 
     trigger?.addEventListener('click', captureLocation);
+
+    const releaseForceGate = () => {
+        if (forcePermission) {
+            forceGate.unlock(componentLockId);
+        }
+    };
+
+    window.addEventListener('pagehide', releaseForceGate);
+    document.addEventListener('livewire:navigate', releaseForceGate);
 
     if (forcePermission) {
         toggleOverlay(true, 'prompt');
