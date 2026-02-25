@@ -96,7 +96,7 @@
         }
 
         overlayNode = document.createElement('div');
-        overlayNode.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.75);z-index:999999;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:ui-sans-serif,system-ui,sans-serif;color:#111827;backdrop-filter:blur(4px);';
+        overlayNode.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:#111827;z-index:999999;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:ui-sans-serif,system-ui,sans-serif;color:#111827;';
 
         const card = document.createElement('div');
         card.style.cssText = 'background:#fff;padding:2.5rem;border-radius:1rem;max-width:90%;width:420px;text-align:center;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);';
