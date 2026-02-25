@@ -28,7 +28,9 @@
     ],
     "require": {
         "php": "^8.2",
-        "illuminate/support": "^11.0|^12.0"
+        "illuminate/cache": "^10.0|^11.0|^12.0",
+        "illuminate/http": "^10.0|^11.0|^12.0",
+        "illuminate/support": "^10.0|^11.0|^12.0"
     },
     "require-dev": {
         "pestphp/pest": "^4.4",
@@ -62,6 +64,7 @@
                 "Mayaram\\BrowserLocation\\BrowserLocationServiceProvider"
             ],
             "aliases": {
+                "BrowserGeocoder": "Mayaram\\BrowserLocation\\Facades\\Geocoder",
                 "BrowserLocation": "Mayaram\\BrowserLocation\\Facades\\BrowserLocation"
             }
         }

@@ -10,6 +10,8 @@ Capture browser-based GPS location in Laravel using the HTML5 Geolocation API.
 - SPA-friendly integration with Livewire navigation (no page reload)
 - Permission + error handling for denied/timeout/unavailable states
 - Accuracy detection (`excellent`, `good`, `poor`, `unknown`)
+- Provider-based geocoding + reverse geocoding (Google, Mapbox, OpenStreetMap)
+- Cache-ready geocoder responses for fast repeated lookups
 - Auto-loaded package migration for `browser_locations` table
 - One-command package setup (`php artisan browser-location:install`)
 - Config-driven behavior for API, validation, capture options, and storage
@@ -100,6 +102,102 @@ This creates `config/browser-location.php`. Here you can configure:
 - Component defaults (auto capture, force permission, watch mode, Livewire method)
 - Required location/auth settings for middleware
 - Storage persistence and precision
+- Geocoder provider switch, API credentials, timeouts, retries, and cache behavior
+
+## Geocoder service (Google / Mapbox / OpenStreetMap)
+
+The package ships with a production-ready geocoder service with:
+
+- Config-driven provider switching
+- Optional cache storage and TTL controls
+- Unified response shape across providers
+- Container binding + facade access
+- Built-in request timeouts/retries and provider-level validation
+
+### Configure provider in `.env`
+
+```dotenv
+# Provider: google | mapbox | openstreetmap
+BROWSER_LOCATION_GEOCODER_PROVIDER=openstreetmap
+
+# Google
+BROWSER_LOCATION_GOOGLE_API_KEY=
+
+# Mapbox
+BROWSER_LOCATION_MAPBOX_ACCESS_TOKEN=
+
+# OpenStreetMap (recommended for Nominatim policy compliance)
+BROWSER_LOCATION_OSM_USER_AGENT="your-app-name/1.0 (admin@example.com)"
+BROWSER_LOCATION_OSM_EMAIL=admin@example.com
+
+# Cache
+BROWSER_LOCATION_GEOCODER_CACHE_ENABLED=true
+BROWSER_LOCATION_GEOCODER_CACHE_TTL=3600
+```
+
+### Usage via facade
+
+```php
+<?php
+
+use Mayaram\BrowserLocation\Facades\Geocoder;
+
+$reverse = Geocoder::reverse(28.6139, 77.2090);
+
+$forward = Geocoder::forward('New Delhi, India', [
+    'limit' => 3,
+    'language' => 'en',
+]);
+```
+
+### Usage via dependency injection (preferred)
+
+```php
+<?php
+
+namespace App\Http\Controllers;
+
+use Mayaram\BrowserLocation\Contracts\Geocoder;
+
+class CheckoutController
+{
+    public function __construct(private readonly Geocoder $geocoder)
+    {
+    }
+
+    public function __invoke(): array
+    {
+        return $this->geocoder->reverse(28.6139, 77.2090);
+    }
+}
+```
+
+### Normalized response shape
+
+```php
+[
+    'provider' => 'openstreetmap',
+    'query' => [...],
+    'resolved' => [
+        'formatted_address' => '...',
+        'latitude' => 28.6139,
+        'longitude' => 77.209,
+        'place_id' => '...',
+        'components' => [...],
+    ],
+    'results' => [...],
+    'raw' => [...],
+]
+```
+
+### Best practices
+
+- Prefer dependency injection (`Mayaram\BrowserLocation\Contracts\Geocoder`) for testability.
+- Keep API credentials in environment variables only; never hardcode keys in source control.
+- Enable cache in production to reduce provider cost and improve p95 latency.
+- Set strict timeout/retry values to avoid slow request fan-out.
+- For OpenStreetMap/Nominatim, always provide a real `user_agent` and contact email.
+- Catch `Mayaram\BrowserLocation\Exceptions\GeocoderException` at your application boundary and return user-safe errors.
 
 ## Livewire 4 integration
 

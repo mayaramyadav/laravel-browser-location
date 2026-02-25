@@ -4,10 +4,14 @@ declare(strict_types=1);
 
 namespace Mayaram\BrowserLocation;
 
+use Illuminate\Contracts\Cache\Factory as CacheFactory;
+use Illuminate\Contracts\Config\Repository as ConfigRepository;
+use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\ServiceProvider;
 use Mayaram\BrowserLocation\Commands\InstallBrowserLocationCommand;
+use Mayaram\BrowserLocation\Contracts\Geocoder as GeocoderContract;
 use Mayaram\BrowserLocation\Http\Middleware\ValidateBrowserLocation;
 use Mayaram\BrowserLocation\View\Components\BrowserLocationTracker;
 
@@ -18,6 +22,15 @@ class BrowserLocationServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(__DIR__.'/../config/browser-location.php', 'browser-location');
 
         $this->app->singleton(BrowserLocation::class, fn (): BrowserLocation => new BrowserLocation);
+        $this->app->singleton(GeocoderContract::class, function ($app): Geocoder {
+            return new Geocoder(
+                $app->make(HttpFactory::class),
+                $app->make(CacheFactory::class),
+                $app->make(ConfigRepository::class)
+            );
+        });
+        $this->app->alias(GeocoderContract::class, Geocoder::class);
+        $this->app->alias(GeocoderContract::class, 'browser-location.geocoder');
     }
 
     public function boot(Router $router): void

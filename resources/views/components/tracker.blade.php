@@ -41,49 +41,112 @@
     };
 
     let watchId = null;
+    let currentPermissionState = forcePermission ? 'prompt' : null;
 
     let overlayNode = null;
+    let overlayTitleNode = null;
+    let overlayMessageNode = null;
+    let overlayActionNode = null;
+
+    const overlayMessages = {
+        prompt: {
+            title: 'Location Access Required',
+            message: 'To continue, allow location access for this site in your browser permission prompt.',
+            buttonLabel: 'Enable Location',
+            showAction: true,
+        },
+        denied: {
+            title: 'Location Access Blocked',
+            message: 'Location permission is blocked. Enable it in your browser site settings, then retry.',
+            buttonLabel: "I Have Enabled It",
+            showAction: true,
+        },
+        unsupported: {
+            title: 'Location Not Supported',
+            message: 'This browser does not support geolocation, so this page cannot continue while forced permission is enabled.',
+            buttonLabel: '',
+            showAction: false,
+        },
+    };
+
+    const setOverlayState = (state = 'prompt') => {
+        if (!overlayNode) {
+            createOverlay();
+        }
+
+        const content = overlayMessages[state] ?? overlayMessages.prompt;
+
+        if (overlayTitleNode) {
+            overlayTitleNode.textContent = content.title;
+        }
+
+        if (overlayMessageNode) {
+            overlayMessageNode.textContent = content.message;
+        }
+
+        if (overlayActionNode) {
+            overlayActionNode.textContent = content.buttonLabel;
+            overlayActionNode.style.display = content.showAction ? 'inline-flex' : 'none';
+        }
+    };
 
     const createOverlay = () => {
-        if (overlayNode) return;
+        if (overlayNode) {
+            return;
+        }
+
         overlayNode = document.createElement('div');
         overlayNode.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.75);z-index:999999;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:ui-sans-serif,system-ui,sans-serif;color:#111827;backdrop-filter:blur(4px);';
-        
+
         const card = document.createElement('div');
         card.style.cssText = 'background:#fff;padding:2.5rem;border-radius:1rem;max-width:90%;width:420px;text-align:center;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);';
-        
+
         card.innerHTML = `
             <svg style="width:64px;height:64px;margin:0 auto 1.5rem;color:#ef4444;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-            <h2 style="font-size:1.5rem;font-weight:700;margin-bottom:0.75rem;color:#111827;">Location Access Required</h2>
-            <p style="margin-bottom:2rem;font-size:1rem;color:#4b5563;line-height:1.5;">
-                This application requires your device's location to continue. Please enable location permissions for this site in your browser settings.
-            </p>
-            <button id="browser-location-retry-btn" style="background:#2563eb;color:#fff;padding:0.75rem 1.5rem;border-radius:0.5rem;border:none;font-weight:600;font-size:1rem;cursor:pointer;width:100%;transition:background 0.2s;">
-                I've Enabled It
+            <h2 data-browser-location-overlay-title style="font-size:1.5rem;font-weight:700;margin-bottom:0.75rem;color:#111827;"></h2>
+            <p data-browser-location-overlay-message style="margin-bottom:2rem;font-size:1rem;color:#4b5563;line-height:1.5;"></p>
+            <button type="button" data-browser-location-overlay-action style="background:#2563eb;color:#fff;padding:0.75rem 1.5rem;border-radius:0.5rem;border:none;font-weight:600;font-size:1rem;cursor:pointer;width:100%;transition:background 0.2s;display:inline-flex;align-items:center;justify-content:center;">
+                Enable Location
             </button>
         `;
-        
+
+        overlayTitleNode = card.querySelector('[data-browser-location-overlay-title]');
+        overlayMessageNode = card.querySelector('[data-browser-location-overlay-message]');
+        overlayActionNode = card.querySelector('[data-browser-location-overlay-action]');
+
+        overlayActionNode?.addEventListener('click', () => {
+            setOverlayState('prompt');
+            captureLocation();
+        });
+
         overlayNode.appendChild(card);
         overlayNode.style.display = 'none';
         document.body.appendChild(overlayNode);
-        
-        document.getElementById('browser-location-retry-btn').addEventListener('click', () => {
-            captureLocation();
-        });
+
+        setOverlayState('prompt');
     };
 
-    const toggleOverlay = (show) => {
-        if (!forcePermission) return;
-        
+    const toggleOverlay = (show, state = 'prompt') => {
+        if (!forcePermission) {
+            return;
+        }
+
         if (show) {
-            if (!overlayNode) createOverlay();
+            if (!overlayNode) {
+                createOverlay();
+            }
+
+            setOverlayState(state);
             overlayNode.style.display = 'flex';
             document.body.style.overflow = 'hidden';
         } else {
-            if (overlayNode) overlayNode.style.display = 'none';
+            if (overlayNode) {
+                overlayNode.style.display = 'none';
+            }
+
             document.body.style.overflow = '';
         }
     };
@@ -172,6 +235,7 @@
     };
 
     const handleSuccess = (position) => {
+        currentPermissionState = 'granted';
         toggleOverlay(false);
 
         const payload = toPayload(position);
@@ -182,6 +246,7 @@
             ? `Location captured (accuracy ${payload.accuracy_meters}m).`
             : `Location captured, but accuracy is low (${payload.accuracy_meters}m).`);
 
+        emit(permissionEventName, { state: 'granted' });
         emit(eventName, payload);
         callLivewire(payload);
     };
@@ -194,23 +259,40 @@
         };
 
         const message = map[error.code] ?? 'Unable to determine browser location.';
+        const permissionState = error.code === 1
+            ? 'denied'
+            : (currentPermissionState === 'granted' ? 'granted' : 'prompt');
+
+        currentPermissionState = permissionState;
 
         setStatus(message);
 
         emit(errorEventName, {
             code: error.code,
             message,
-            permission_state: error.code === 1 ? 'denied' : 'prompt',
+            permission_state: permissionState,
         });
 
-        if (forcePermission && error.code === 1) {
-            toggleOverlay(true);
+        emit(permissionEventName, { state: permissionState });
+
+        if (forcePermission && permissionState !== 'granted') {
+            toggleOverlay(true, permissionState === 'denied' ? 'denied' : 'prompt');
         }
     };
 
     const captureLocation = () => {
         if (!navigator.geolocation) {
-            handleError({ code: 2 });
+            const message = 'Geolocation is not supported by this browser.';
+            setStatus(message);
+            emit(errorEventName, {
+                code: 2,
+                message,
+                permission_state: 'prompt',
+            });
+
+            if (forcePermission) {
+                toggleOverlay(true, 'unsupported');
+            }
 
             return;
         }
@@ -224,34 +306,49 @@
 
     const bindPermissionEvents = () => {
         if (!navigator.permissions || typeof navigator.permissions.query !== 'function') {
+            if (forcePermission) {
+                toggleOverlay(true, 'prompt');
+            }
+
             return;
         }
 
         navigator.permissions
             .query({ name: 'geolocation' })
             .then((result) => {
+                currentPermissionState = result.state;
                 emit(permissionEventName, { state: result.state });
+
+                if (result.state === 'granted') {
+                    toggleOverlay(false);
+                } else if (forcePermission) {
+                    toggleOverlay(true, result.state === 'denied' ? 'denied' : 'prompt');
+                }
+
                 result.onchange = () => {
+                    currentPermissionState = result.state;
                     emit(permissionEventName, { state: result.state });
+
                     if (result.state === 'granted') {
                         toggleOverlay(false);
                         captureLocation();
-                    } else if (result.state === 'denied' && forcePermission) {
-                        toggleOverlay(true);
+                    } else if (forcePermission) {
+                        toggleOverlay(true, result.state === 'denied' ? 'denied' : 'prompt');
                     }
                 };
-
-                // Show overlay immediately if already denied and forcePermission is true
-                if (result.state === 'denied' && forcePermission) {
-                    toggleOverlay(true);
-                }
             })
             .catch(() => {
-                // Ignore permission API failures and rely on geolocation callback errors.
+                if (forcePermission) {
+                    toggleOverlay(true, 'prompt');
+                }
             });
     };
 
     trigger?.addEventListener('click', captureLocation);
+
+    if (forcePermission) {
+        toggleOverlay(true, 'prompt');
+    }
 
     bindPermissionEvents();
 
@@ -277,7 +374,7 @@
 
     if (autoCapture || forcePermission) {
         captureLocation();
-        
+
         if (autoCapture) {
             document.addEventListener('livewire:navigated', captureLocation);
         }
