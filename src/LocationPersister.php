@@ -22,8 +22,7 @@ class LocationPersister
         private readonly GeocoderContract $geocoder,
         private readonly ConfigRepository $config,
         private readonly ?SymfonyRequest $request = null
-    ) {
-    }
+    ) {}
 
     /**
      * @param  array<string, mixed>  $data

@@ -15,8 +15,7 @@ class PendingLocation
     public function __construct(
         private readonly Model $locationable,
         private readonly array $data
-    ) {
-    }
+    ) {}
 
     public function toLocationCollection(string $name = 'default'): BrowserLocationModel
     {

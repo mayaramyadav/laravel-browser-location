@@ -17,8 +17,7 @@ class StoreBrowserLocationController extends Controller
 {
     public function __construct(
         private readonly LocationPersister $persister
-    ) {
-    }
+    ) {}
 
     public function __invoke(Request $request): JsonResponse
     {

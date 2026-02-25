@@ -6,6 +6,4 @@ namespace Mayaram\BrowserLocation\Exceptions;
 
 use RuntimeException;
 
-class LocationPersistenceException extends RuntimeException
-{
-}
+class LocationPersistenceException extends RuntimeException {}
