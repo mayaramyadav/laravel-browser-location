@@ -2,6 +2,10 @@
 
 All notable changes to `laravel-browser-location` will be documented in this file.
 
+## 2.1.2 - 2026-02-27
+
+**Full Changelog**: https://github.com/mayaramyadav/laravel-browser-location/compare/v2.1.0...2.1.2
+
 ## v2.1.0 - 2026-02-27
 
 **Full Changelog**: https://github.com/mayaramyadav/laravel-browser-location/compare/v2.0.0...v2.1.0
@@ -13,10 +17,11 @@ All notable changes to `laravel-browser-location` will be documented in this fil
 ### Added
 
 - **Geocoder Fallback Provider**: When the primary geocoder (e.g., Google) fails with an API-level error such as `REQUEST_DENIED` or `OVER_QUERY_LIMIT`, the package now automatically retries the request using a configurable fallback provider instead of throwing an unhandled exception.
-    - Configure via `BROWSER_LOCATION_GEOCODER_FALLBACK_PROVIDER` env variable (e.g., `openstreetmap`)
-    - A `warning` log entry is emitted on fallback instead of a hard `error`
-    - Falls back gracefully for both `reverse()` and `forward()` geocoding operations
-    - If no fallback is configured, behaviour is unchanged (exception propagates as before)
+  - Configure via `BROWSER_LOCATION_GEOCODER_FALLBACK_PROVIDER` env variable (e.g., `openstreetmap`)
+  - A `warning` log entry is emitted on fallback instead of a hard `error`
+  - Falls back gracefully for both `reverse()` and `forward()` geocoding operations
+  - If no fallback is configured, behaviour is unchanged (exception propagates as before)
+  
 
 ## v2.0.0 - 2026-02-25
 
