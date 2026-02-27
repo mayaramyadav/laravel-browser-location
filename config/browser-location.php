@@ -48,6 +48,7 @@ return [
 
     'geocoder' => [
         'provider' => env('BROWSER_LOCATION_GEOCODER_PROVIDER', 'openstreetmap'),
+        'fallback_provider' => env('BROWSER_LOCATION_GEOCODER_FALLBACK_PROVIDER'),
         'timeout' => (float) env('BROWSER_LOCATION_GEOCODER_TIMEOUT', 8),
         'connect_timeout' => (float) env('BROWSER_LOCATION_GEOCODER_CONNECT_TIMEOUT', 3),
         'retries' => (int) env('BROWSER_LOCATION_GEOCODER_RETRIES', 1),

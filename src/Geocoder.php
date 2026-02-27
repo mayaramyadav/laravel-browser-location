@@ -8,6 +8,7 @@ use Illuminate\Contracts\Cache\Factory as CacheFactory;
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Log;
 use Mayaram\BrowserLocation\Contracts\Geocoder as GeocoderContract;
 use Mayaram\BrowserLocation\Exceptions\GeocoderException;
 use Throwable;
@@ -45,14 +46,36 @@ class Geocoder implements GeocoderContract
             'limit' => Arr::get($options, 'limit'),
         ];
 
-        return $this->remember($provider, 'reverse', $query, function () use ($provider, $latitude, $longitude, $options): array {
-            return match ($provider) {
-                self::GOOGLE => $this->reverseGoogle($latitude, $longitude, $options),
-                self::MAPBOX => $this->reverseMapbox($latitude, $longitude, $options),
-                self::OPEN_STREET_MAP => $this->reverseOpenStreetMap($latitude, $longitude, $options),
-                default => throw new GeocoderException(sprintf('Unsupported geocoder provider [%s].', $provider)),
-            };
-        });
+        try {
+            return $this->remember($provider, 'reverse', $query, function () use ($provider, $latitude, $longitude, $options): array {
+                return match ($provider) {
+                    self::GOOGLE => $this->reverseGoogle($latitude, $longitude, $options),
+                    self::MAPBOX => $this->reverseMapbox($latitude, $longitude, $options),
+                    self::OPEN_STREET_MAP => $this->reverseOpenStreetMap($latitude, $longitude, $options),
+                    default => throw new GeocoderException(sprintf('Unsupported geocoder provider [%s].', $provider)),
+                };
+            });
+        } catch (GeocoderException $exception) {
+            $fallback = $this->resolveFallbackProvider($provider);
+
+            if ($fallback === null) {
+                throw $exception;
+            }
+
+            Log::warning(sprintf(
+                'Geocoder provider [%s] failed, falling back to [%s]: %s',
+                $provider, $fallback, $exception->getMessage()
+            ));
+
+            return $this->remember($fallback, 'reverse', $query, function () use ($fallback, $latitude, $longitude, $options): array {
+                return match ($fallback) {
+                    self::GOOGLE => $this->reverseGoogle($latitude, $longitude, $options),
+                    self::MAPBOX => $this->reverseMapbox($latitude, $longitude, $options),
+                    self::OPEN_STREET_MAP => $this->reverseOpenStreetMap($latitude, $longitude, $options),
+                    default => throw new GeocoderException(sprintf('Unsupported geocoder provider [%s].', $fallback)),
+                };
+            });
+        }
     }
 
     /**
@@ -76,14 +99,36 @@ class Geocoder implements GeocoderContract
             'limit' => Arr::get($options, 'limit'),
         ];
 
-        return $this->remember($provider, 'forward', $query, function () use ($provider, $normalizedAddress, $options): array {
-            return match ($provider) {
-                self::GOOGLE => $this->forwardGoogle($normalizedAddress, $options),
-                self::MAPBOX => $this->forwardMapbox($normalizedAddress, $options),
-                self::OPEN_STREET_MAP => $this->forwardOpenStreetMap($normalizedAddress, $options),
-                default => throw new GeocoderException(sprintf('Unsupported geocoder provider [%s].', $provider)),
-            };
-        });
+        try {
+            return $this->remember($provider, 'forward', $query, function () use ($provider, $normalizedAddress, $options): array {
+                return match ($provider) {
+                    self::GOOGLE => $this->forwardGoogle($normalizedAddress, $options),
+                    self::MAPBOX => $this->forwardMapbox($normalizedAddress, $options),
+                    self::OPEN_STREET_MAP => $this->forwardOpenStreetMap($normalizedAddress, $options),
+                    default => throw new GeocoderException(sprintf('Unsupported geocoder provider [%s].', $provider)),
+                };
+            });
+        } catch (GeocoderException $exception) {
+            $fallback = $this->resolveFallbackProvider($provider);
+
+            if ($fallback === null) {
+                throw $exception;
+            }
+
+            Log::warning(sprintf(
+                'Geocoder provider [%s] failed, falling back to [%s]: %s',
+                $provider, $fallback, $exception->getMessage()
+            ));
+
+            return $this->remember($fallback, 'forward', $query, function () use ($fallback, $normalizedAddress, $options): array {
+                return match ($fallback) {
+                    self::GOOGLE => $this->forwardGoogle($normalizedAddress, $options),
+                    self::MAPBOX => $this->forwardMapbox($normalizedAddress, $options),
+                    self::OPEN_STREET_MAP => $this->forwardOpenStreetMap($normalizedAddress, $options),
+                    default => throw new GeocoderException(sprintf('Unsupported geocoder provider [%s].', $fallback)),
+                };
+            });
+        }
     }
 
     private function assertValidCoordinates(float $latitude, float $longitude): void
@@ -469,6 +514,28 @@ class Geocoder implements GeocoderContract
 
         if (! in_array($normalized, [self::GOOGLE, self::MAPBOX, self::OPEN_STREET_MAP], true)) {
             throw new GeocoderException(sprintf('Unsupported geocoder provider [%s].', $normalized));
+        }
+
+        return $normalized;
+    }
+
+    private function resolveFallbackProvider(string $primaryProvider): ?string
+    {
+        $fallback = $this->config->get('browser-location.geocoder.fallback_provider');
+
+        if (! is_string($fallback) || trim($fallback) === '') {
+            return null;
+        }
+
+        $normalized = strtolower(trim($fallback));
+
+        // Ignore the fallback if it is the same as the failing primary provider
+        if ($normalized === $primaryProvider) {
+            return null;
+        }
+
+        if (! in_array($normalized, [self::GOOGLE, self::MAPBOX, self::OPEN_STREET_MAP], true)) {
+            return null;
         }
 
         return $normalized;
