@@ -84,7 +84,7 @@ class BrowserLocationTracker extends Component
         $this->eventName = $eventName;
         $this->errorEventName = $errorEventName;
         $this->permissionEventName = $permissionEventName;
-        $this->autoSave = $autoSave ?? (bool) config('browser-location.auto_save', true);
+        $this->autoSave = $autoSave ?? (bool) config('browser-location.auto_save', false);
         $this->captureEndpoint = $captureEndpoint ?? (string) config('browser-location.capture_endpoint', '/browser-location/capture');
         $this->collectionName = $collectionName ?? (string) config('browser-location.default_collection', 'default');
 

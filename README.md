@@ -1,7 +1,7 @@
 # Laravel Browser Location
 
 Capture browser-based GPS location in Laravel using the HTML5 Geolocation API.  
-Works with **plain Blade**, **Livewire 3**, and **Livewire 4**.
+Works with **plain Blade** and **Livewire 3**.
 
 ## Table of Contents
 
@@ -40,7 +40,7 @@ Works with **plain Blade**, **Livewire 3**, and **Livewire 4**.
 ## Core features
 
 - Accurate GPS capture with HTML5 Geolocation
-- Works with **plain Blade, Livewire 3, and Livewire 4** — Livewire is fully optional
+- Works with **plain Blade** and **Livewire 3** — Livewire is fully optional
 - Ready-to-use Blade component (`<x-browser-location-tracker />`)
 - SPA-friendly: re-captures after every Livewire navigation without page reload
 - Permission + error handling for denied / timeout / unavailable states
@@ -95,7 +95,7 @@ Drop the tracker anywhere in any Blade view — including inside a Livewire comp
 | `enable-high-accuracy`     | bool   | `true`                          | Requests the most accurate reading from the device GPS.                             |
 | `timeout`                  | int    | `12000`                         | Milliseconds before the location request times out.                                 |
 | `maximum-age`              | int    | `0`                             | Milliseconds a cached location is considered fresh (`0` = always fresh).            |
-| `auto-save`                | bool   | `true`                          | Automatically POSTs captures to the package save endpoint.                          |
+| `auto-save`                | bool   | `false`                         | Automatically POSTs captures to the package save endpoint.                          |
 | `capture-endpoint`         | string | `'/browser-location/capture'`   | Endpoint used by JS for automatic persistence.                                      |
 | `collection-name`          | string | `'default'`                     | Target location collection for automatic save.                                      |
 | `locationable-type`        | string | auth user morph class           | Override the model class that owns the location (must be allow-listed).             |
@@ -159,7 +159,7 @@ php artisan vendor:publish --tag=browser-location-config
 Creates `config/browser-location.php`. Key options:
 
 ```php
-'auto_save'          => true,    // persist every capture automatically
+'auto_save'          => false,   // persist every capture automatically
 'min_accuracy'       => 200,     // max accepted accuracy in metres
 'prevent_duplicates' => true,    // skip saves within 20 m of last point
 'default_collection' => 'default',
@@ -290,7 +290,7 @@ When `<x-browser-location-tracker />` captures a location the package:
 ### Persistence config
 
 ```php
-'auto_save'          => true,
+'auto_save'          => false,
 'min_accuracy'       => 200,
 'prevent_duplicates' => true,
 'default_collection' => 'default',

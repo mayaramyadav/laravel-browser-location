@@ -21,7 +21,7 @@ class StoreBrowserLocationController extends Controller
 
     public function __invoke(Request $request): JsonResponse
     {
-        if (! (bool) config('browser-location.auto_save', true)) {
+        if (! (bool) config('browser-location.auto_save', false)) {
             return response()->json([
                 'saved' => false,
                 'reason' => 'auto_save_disabled',

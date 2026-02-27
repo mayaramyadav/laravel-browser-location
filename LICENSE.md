@@ -1,6 +1,6 @@
 The MIT License (MIT)
 
-Copyright (c) mayaram <info@mayaram.in>
+Copyright (c) Mayaram Yadav <info@mayaram.in>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

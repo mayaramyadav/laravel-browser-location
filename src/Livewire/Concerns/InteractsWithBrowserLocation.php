@@ -228,7 +228,7 @@ trait InteractsWithBrowserLocation
      */
     protected function persistBrowserLocationIfNeeded(array &$location): void
     {
-        if (! (bool) config('browser-location.auto_save', true)) {
+        if (! (bool) config('browser-location.auto_save', false)) {
             return;
         }
 

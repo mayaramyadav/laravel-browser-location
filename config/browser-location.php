@@ -27,7 +27,7 @@ return [
         'coordinate_precision' => 7,
     ],
 
-    'auto_save' => (bool) env('BROWSER_LOCATION_AUTO_SAVE', true),
+    'auto_save' => (bool) env('BROWSER_LOCATION_AUTO_SAVE', false),
     'min_accuracy' => (float) env('BROWSER_LOCATION_MIN_ACCURACY', 200),
     'prevent_duplicates' => (bool) env('BROWSER_LOCATION_PREVENT_DUPLICATES', true),
     'default_collection' => env('BROWSER_LOCATION_DEFAULT_COLLECTION', 'default'),
