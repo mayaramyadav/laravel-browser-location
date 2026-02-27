@@ -38,7 +38,7 @@ class BrowserLocation extends Model
      * @var array<string, string>
      */
     protected $casts = [
-        'locationable_id' => 'int',
+        'locationable_id' => 'string',
         'latitude' => 'float',
         'longitude' => 'float',
         'accuracy' => 'float',

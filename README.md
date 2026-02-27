@@ -1,14 +1,16 @@
 # Laravel Browser Location
 
-Capture browser-based GPS location in Laravel using the HTML5 Geolocation API.
+Capture browser-based GPS location in Laravel using the HTML5 Geolocation API.  
+Works with **plain Blade**, **Livewire 3**, and **Livewire 4**.
 
 ## Table of Contents
 
 - [Core features](#core-features)
 - [Installation](#installation)
 - [Usage: Blade component](#usage-blade-component)
-    - [All Package Options (Component Props)](#all-package-options-component-props)
-    - [Javascript API](#javascript-api)
+    - [All Component Props](#all-component-props)
+    - [Browser Events](#browser-events)
+    - [JavaScript API](#javascript-api)
 - [Configuration](#configuration)
 - [Geocoder service (Google / Mapbox / OpenStreetMap)](#geocoder-service-google--mapbox--openstreetmap)
     - [Configure provider in `.env`](#configure-provider-in-env)
@@ -23,27 +25,36 @@ Capture browser-based GPS location in Laravel using the HTML5 Geolocation API.
     - [4) Automatic saving flow (no manual save required)](#4-automatic-saving-flow-no-manual-save-required)
     - [Persistence config](#persistence-config)
     - [Optional explicit locationable models](#optional-explicit-locationable-models)
-- [Livewire 4 integration](#livewire-4-integration)
+- [Livewire integration (v3 & v4)](#livewire-integration-v3--v4)
+    - [Basic setup](#basic-setup)
+    - [Trait helper methods](#trait-helper-methods)
+    - [Livewire 3 & 4 — recommended attributes](#livewire-3--4--recommended-attributes)
+    - [Livewire 4: using \#\[On\] to react via JS dispatch](#livewire-4-using-on-to-react-via-js-dispatch)
+- [Compatibility matrix](#compatibility-matrix)
 - [Middleware Validation](#middleware-validation)
 - [Testing](#testing)
 - [License](#license)
 
+---
+
 ## Core features
 
 - Accurate GPS capture with HTML5 Geolocation
-- Livewire-friendly component and event bridge
+- Works with **plain Blade, Livewire 3, and Livewire 4** — Livewire is fully optional
 - Ready-to-use Blade component (`<x-browser-location-tracker />`)
-- SPA-friendly integration with Livewire navigation (no page reload)
-- Permission + error handling for denied/timeout/unavailable states
+- SPA-friendly: re-captures after every Livewire navigation without page reload
+- Permission + error handling for denied / timeout / unavailable states
 - Accuracy detection (`excellent`, `good`, `poor`, `unknown`)
+- Typed PHP helper methods on the Livewire trait
 - Provider-based geocoding + reverse geocoding (Google, Mapbox, OpenStreetMap)
 - Cache-ready geocoder responses for fast repeated lookups
 - Spatie-style location collections with polymorphic model ownership
-- Automatic DB persistence from tracker capture (`JS -> API -> Laravel`)
-- Auto-loaded package migration for `browser_locations` table
-- One-command package setup (`php artisan browser-location:install`)
-- Config-driven behavior for API, validation, capture options, and storage
+- Automatic DB persistence (`JS → API → Laravel`)
+- Auto-loaded migration for `browser_locations` table
+- One-command setup: `php artisan browser-location:install`
 - Middleware alias for route-level location validation (`browser-location.validate`)
+
+---
 
 ## Installation
 
@@ -57,43 +68,43 @@ Run the installer command:
 php artisan browser-location:install
 ```
 
-This command publishes config/views/migrations and runs migrations.
+This publishes config / views / migrations and runs migrations automatically.
+
+---
 
 ## Usage: Blade component
 
-Add the tracker anywhere in your Blade view. The easiest way is using the defaults:
+Drop the tracker anywhere in any Blade view — including inside a Livewire component:
 
 ```blade
 <x-browser-location-tracker />
 ```
 
-> **Note:** By default, the component sets `auto-capture="true"` and `force-permission="true"`. This means as soon as the component loads, the browser will automatically request the user's location. If you don't want this to happen, explicitly set them to `false`.
+> **Default behaviour:** `auto-capture="true"` and `force-permission="true"` are on by default, so the browser will request the user's location immediately. Set them to `false` if you want manual control.
 
-### All Package Options (Component Props)
+### All Component Props
 
-You can customize the component behavior by passing any of these props. Most default values come directly from your `config/browser-location.php` file:
+| Prop                       | Type   | Default                         | Description                                                                         |
+| -------------------------- | ------ | ------------------------------- | ----------------------------------------------------------------------------------- |
+| `button-text`              | string | `'Share GPS location'`          | Label for the (hidden by default) trigger button.                                   |
+| `auto-capture`             | bool   | `true`                          | Requests location on page load and after every Livewire navigation.                 |
+| `force-permission`         | bool   | `true`                          | Shows a full-screen overlay until the user grants permission.                       |
+| `watch`                    | bool   | `false`                         | Continuously tracks position using `watchPosition()`.                               |
+| `livewire-method`          | string | `'setBrowserLocation'`          | Livewire component method called on successful capture. Leave empty in plain Blade. |
+| `required-accuracy-meters` | float  | `200`                           | Threshold for the `is_accurate` flag in the payload.                                |
+| `enable-high-accuracy`     | bool   | `true`                          | Requests the most accurate reading from the device GPS.                             |
+| `timeout`                  | int    | `12000`                         | Milliseconds before the location request times out.                                 |
+| `maximum-age`              | int    | `0`                             | Milliseconds a cached location is considered fresh (`0` = always fresh).            |
+| `auto-save`                | bool   | `true`                          | Automatically POSTs captures to the package save endpoint.                          |
+| `capture-endpoint`         | string | `'/browser-location/capture'`   | Endpoint used by JS for automatic persistence.                                      |
+| `collection-name`          | string | `'default'`                     | Target location collection for automatic save.                                      |
+| `locationable-type`        | string | auth user morph class           | Override the model class that owns the location (must be allow-listed).             |
+| `locationable-id`          | mixed  | auth user key                   | Override the model key.                                                             |
+| `event-name`               | string | `'browser-location:updated'`    | JS event dispatched on successful capture.                                          |
+| `error-event-name`         | string | `'browser-location:error'`      | JS event dispatched on error.                                                       |
+| `permission-event-name`    | string | `'browser-location:permission'` | JS event dispatched when permission state changes.                                  |
 
-| Prop                       | Type   | Default                         | Description                                                                                          |
-| -------------------------- | ------ | ------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `button-text`              | string | `'Share GPS location'`          | Text used if you trigger location capture via a button click.                                        |
-| `auto-capture`             | bool   | `true`                          | When `true`, automatically requests location on page load and Livewire navigation.                   |
-| `force-permission`         | bool   | `true`                          | When `true`, forces the permission prompt on page load and blocks UI until granted.                  |
-| `watch`                    | bool   | `false`                         | When `true`, continually watches and updates location using `navigator.geolocation.watchPosition()`. |
-| `livewire-method`          | string | `'setBrowserLocation'`          | The Livewire method to call on success (if inside a Livewire component).                             |
-| `required-accuracy-meters` | float  | `200`                           | Validates if the reading is accurate enough.                                                         |
-| `enable-high-accuracy`     | bool   | `true`                          | Requests the most accurate reading possible from the device GPS.                                     |
-| `timeout`                  | int    | `12000`                         | Milliseconds the browser waits to get the location before timing out.                                |
-| `maximum-age`              | int    | `0`                             | Milliseconds a cached location is considered valid (`0` enforces a fresh reading).                   |
-| `auto-save`                | bool   | `true`                          | Automatically sends successful captures to the package save endpoint.                                |
-| `capture-endpoint`         | string | `'/browser-location/capture'`   | Endpoint used by JS for automatic persistence.                                                       |
-| `collection-name`          | string | `'default'`                     | Target location collection name for automatic save.                                                  |
-| `locationable-type`        | string | `auth user morph class`         | Optional explicit location owner model class (must be allow-listed).                                 |
-| `locationable-id`          | mixed  | `auth user key`                 | Optional explicit location owner key.                                                                |
-| `event-name`               | string | `'browser-location:updated'`    | The JavaScript event dispatched on successful capture.                                               |
-| `error-event-name`         | string | `'browser-location:error'`      | The JavaScript event dispatched on error.                                                            |
-| `permission-event-name`    | string | `'browser-location:permission'` | The JavaScript event dispatched when permission state changes.                                       |
-
-**Example configuration overriding defaults:**
+**Example with custom options:**
 
 ```blade
 <x-browser-location-tracker
@@ -102,52 +113,68 @@ You can customize the component behavior by passing any of these props. Most def
     :force-permission="false"
     :watch="true"
     :timeout="10000"
-    :enable-high-accuracy="true"
     livewire-method="saveLocation"
     :required-accuracy-meters="80"
 />
 ```
 
-Component events dispatched natively in the browser on the `document`:
+### Browser Events
 
-- `browser-location:updated` (Payload contains location details)
-- `browser-location:error` (Payload contains error code and message)
-- `browser-location:permission` (Payload contains permission state)
-- `browser-location:saved` (Payload contains persistence result from package endpoint)
-- `browser-location:save-error` (Payload contains persistence request error details)
+The tracker dispatches these native DOM events on `document`:
 
-### Javascript API
+| Event                         | Description                                                    |
+| ----------------------------- | -------------------------------------------------------------- |
+| `browser-location:updated`    | Successful capture — payload contains full location data       |
+| `browser-location:error`      | Error — payload contains `code` and `message`                  |
+| `browser-location:permission` | Permission state changed — payload contains `state`            |
+| `browser-location:saved`      | Location persisted to DB — payload contains persistence result |
+| `browser-location:save-error` | Persistence request failed                                     |
 
-The tracker exposes a global `window.BrowserLocationTracker` object that you can use to programmatically interact with the component:
+```js
+document.addEventListener("browser-location:updated", (e) => {
+    console.log(e.detail.latitude, e.detail.longitude);
+});
+```
 
-- `window.BrowserLocationTracker.getJson()`: Returns the latest captured location data as a JSON string.
-- `window.BrowserLocationTracker.requestPermission()`: Programmatically triggers the browser's location permission prompt and captures location.
+### JavaScript API
+
+```js
+// Last-initialized tracker on the page:
+window.BrowserLocationTracker.capture(); // Trigger a fresh capture
+window.BrowserLocationTracker.requestPermission(); // Alias for capture()
+window.BrowserLocationTracker.getJson(); // Returns latest data as JSON string
+
+// Named instance (if you have multiple trackers):
+window.BrowserLocation["browser-location-<ulid>"].capture();
+```
+
+---
 
 ## Configuration
-
-Publish the config file if you want to modify package-wide defaults:
 
 ```bash
 php artisan vendor:publish --tag=browser-location-config
 ```
 
-This creates `config/browser-location.php`. Here you can configure:
+Creates `config/browser-location.php`. Key options:
 
-- Accuracy thresholds + maximum accepted meters
-- Component defaults (auto capture, force permission, watch mode, Livewire method)
-- Required location/auth settings for middleware
-- Storage persistence and precision
-- Geocoder provider switch, API credentials, timeouts, retries, and cache behavior
+```php
+'auto_save'          => true,    // persist every capture automatically
+'min_accuracy'       => 200,     // max accepted accuracy in metres
+'prevent_duplicates' => true,    // skip saves within 20 m of last point
+'default_collection' => 'default',
+
+'component' => [
+    'auto_capture'    => true,
+    'force_permission' => true,
+    'watch'           => false,
+    'livewire_method' => 'setBrowserLocation',
+],
+```
+
+---
 
 ## Geocoder service (Google / Mapbox / OpenStreetMap)
-
-The package ships with a production-ready geocoder service with:
-
-- Config-driven provider switching
-- Optional cache storage and TTL controls
-- Unified response shape across providers
-- Container binding + facade access
-- Built-in request timeouts/retries and provider-level validation
 
 ### Configure provider in `.env`
 
@@ -161,7 +188,7 @@ BROWSER_LOCATION_GOOGLE_API_KEY=
 # Mapbox
 BROWSER_LOCATION_MAPBOX_ACCESS_TOKEN=
 
-# OpenStreetMap (recommended for Nominatim policy compliance)
+# OpenStreetMap (required for Nominatim policy compliance)
 BROWSER_LOCATION_OSM_USER_AGENT="your-app-name/1.0 (admin@example.com)"
 BROWSER_LOCATION_OSM_EMAIL=admin@example.com
 
@@ -173,32 +200,20 @@ BROWSER_LOCATION_GEOCODER_CACHE_TTL=3600
 ### Usage via facade
 
 ```php
-<?php
-
 use Mayaram\BrowserLocation\Facades\Geocoder;
 
 $reverse = Geocoder::reverse(28.6139, 77.2090);
-
-$forward = Geocoder::forward('New Delhi, India', [
-    'limit' => 3,
-    'language' => 'en',
-]);
+$forward = Geocoder::forward('New Delhi, India');
 ```
 
 ### Usage via dependency injection (preferred)
 
 ```php
-<?php
-
-namespace App\Http\Controllers;
-
 use Mayaram\BrowserLocation\Contracts\Geocoder;
 
 class CheckoutController
 {
-    public function __construct(private readonly Geocoder $geocoder)
-    {
-    }
+    public function __construct(private readonly Geocoder $geocoder) {}
 
     public function __invoke(): array
     {
@@ -212,40 +227,34 @@ class CheckoutController
 ```php
 [
     'provider' => 'openstreetmap',
-    'query' => [...],
+    'query'    => [...],
     'resolved' => [
         'formatted_address' => '...',
-        'latitude' => 28.6139,
-        'longitude' => 77.209,
-        'place_id' => '...',
-        'components' => [...],
+        'latitude'          => 28.6139,
+        'longitude'         => 77.209,
+        'place_id'          => '...',
+        'components'        => [...],
     ],
     'results' => [...],
-    'raw' => [...],
+    'raw'     => [...],
 ]
 ```
 
 ### Best practices
 
-- Prefer dependency injection (`Mayaram\BrowserLocation\Contracts\Geocoder`) for testability.
-- Keep API credentials in environment variables only; never hardcode keys in source control.
-- Enable cache in production to reduce provider cost and improve p95 latency.
-- Set strict timeout/retry values to avoid slow request fan-out.
-- For OpenStreetMap/Nominatim, always provide a real `user_agent` and contact email.
-- Catch `Mayaram\BrowserLocation\Exceptions\GeocoderException` at your application boundary and return user-safe errors.
+- Prefer dependency injection for testability.
+- Keep API credentials in `.env` — never commit keys.
+- Enable cache in production to reduce cost and latency.
+- For OpenStreetMap/Nominatim, always supply a real `user_agent` and contact email.
+- Catch `Mayaram\BrowserLocation\Exceptions\GeocoderException` at your application boundary.
+
+---
 
 ## Location persistence collections
-
-The package stores captured locations in `browser_locations` with polymorphic ownership and collection names.
 
 ### 1) Add the `HasLocations` trait to your model
 
 ```php
-<?php
-
-namespace App\Models;
-
-use Illuminate\Foundation\Auth\User as Authenticatable;
 use Mayaram\BrowserLocation\Concerns\HasLocations;
 
 class User extends Authenticatable
@@ -258,9 +267,7 @@ class User extends Authenticatable
 
 ```php
 $user->addLocation($data)->toLocationCollection('checkins');
-
 $order->addLocation($data)->toLocationCollection('delivery');
-
 $user->addLocation($data)->toSingleLocationCollection('live');
 ```
 
@@ -273,44 +280,39 @@ $visits = $user->getLocations('visits');
 
 ### 4) Automatic saving flow (no manual save required)
 
-When `<x-browser-location-tracker />` captures location, the package:
+When `<x-browser-location-tracker />` captures a location the package:
 
-1. Sends payload to `POST /browser-location/capture`
-2. Validates via `browser-location.validate`
-3. Applies quality checks (accuracy + anti-duplicate rules)
-4. Persists in `browser_locations`
-
-The endpoint also enriches `meta` with:
-
-- Raw browser GPS payload
-- Raw geocoder payload
-- Request IP and user-agent
-- Timestamp and app metadata
+1. POSTs coordinates to `POST /browser-location/capture`
+2. Validates via `browser-location.validate` middleware
+3. Applies quality checks (accuracy threshold + anti-duplicate rules)
+4. Persists in `browser_locations` and enriches `meta` with raw GPS, geocoder response, IP, user-agent
 
 ### Persistence config
 
 ```php
-// config/browser-location.php
-'auto_save' => true,
-'min_accuracy' => 200,
+'auto_save'          => true,
+'min_accuracy'       => 200,
 'prevent_duplicates' => true,
 'default_collection' => 'default',
-'capture_endpoint' => '/browser-location/capture',
+'capture_endpoint'   => '/browser-location/capture',
 ```
 
 ### Optional explicit locationable models
 
-For security, explicit `locationable_type` + `locationable_id` are only accepted if class is allow-listed:
-
 ```php
+// config/browser-location.php
 'allowed_locationable_models' => [
     App\Models\Order::class,
 ],
 ```
 
-## Livewire 4 integration
+---
 
-Use the provided trait in your Livewire component to automatically handle location updates:
+## Livewire integration (v3 & v4)
+
+### Basic setup
+
+**1. Add the trait to your Livewire component:**
 
 ```php
 <?php
@@ -320,50 +322,186 @@ namespace App\Livewire;
 use Livewire\Component;
 use Mayaram\BrowserLocation\Livewire\Concerns\InteractsWithBrowserLocation;
 
-class CheckoutLocation extends Component
+class TripTracker extends Component
 {
     use InteractsWithBrowserLocation;
 
-    // Optional: return the model to attach persisted locations to.
+    public string $status = 'Waiting for location…';
+
+    // Called automatically after every location update
+    public function onBrowserLocationUpdated(array $location): void
+    {
+        $this->status = "Lat: {$this->getLatitude()}, Lng: {$this->getLongitude()}";
+    }
+
+    // Optional: return the model that locations should be attached to
     public function getBrowserLocationable(): ?\Illuminate\Database\Eloquent\Model
     {
         return auth()->user();
     }
 
-    public function onBrowserLocationUpdated(array $location): void
+    public function render()
     {
-        // Optional hook called after setBrowserLocation() updates the location state.
-        // You can access $location['latitude'], $location['longitude'], etc.
+        return view('livewire.trip-tracker');
     }
 }
 ```
 
-Then include the tracker in your component's blade view:
+**2. Add the tracker inside the component's Blade view:**
 
 ```blade
-<x-browser-location-tracker livewire-method="setBrowserLocation" />
+{{-- livewire/trip-tracker.blade.php --}}
+<div>
+    <x-browser-location-tracker />   {{-- wire:ignore is applied automatically --}}
+
+    @if ($this->hasLocation())
+        <p>Lat: {{ $this->getLatitude() }}, Lng: {{ $this->getLongitude() }}</p>
+        <p>Accuracy: {{ $this->getAccuracy() }} m ({{ $this->getAccuracyLevel() }})</p>
+    @endif
+
+    <p>{{ $status }}</p>
+</div>
 ```
 
-`x-browser-location-tracker` renders with `wire:ignore` so re-renders do not interrupt the browser permission / capture lifecycle.
+---
+
+### Trait helper methods
+
+All methods are available on any Livewire component that uses `InteractsWithBrowserLocation`:
+
+#### Coordinate helpers
+
+| Method                                   | Returns  | Description                                                  |
+| ---------------------------------------- | -------- | ------------------------------------------------------------ |
+| `hasLocation()`                          | `bool`   | `true` once the browser sends valid coordinates              |
+| `getLatitude()`                          | `?float` | Captured latitude                                            |
+| `getLongitude()`                         | `?float` | Captured longitude                                           |
+| `getAccuracy()`                          | `?float` | GPS accuracy in metres                                       |
+| `getAccuracyLevel()`                     | `string` | `'excellent'` / `'good'` / `'poor'` / `'unknown'`            |
+| `browserLocationIsAccurate(?float $max)` | `bool`   | Whether accuracy is within the given or configured threshold |
+
+#### Permission & error helpers
+
+| Method                      | Returns   | Description                                    |
+| --------------------------- | --------- | ---------------------------------------------- |
+| `getLocationPermission()`   | `?string` | `'granted'`, `'denied'`, `'prompt'`, or `null` |
+| `isLocationDenied()`        | `bool`    | Quick check for denied permission              |
+| `getLocationErrorCode()`    | `?int`    | 1 = denied, 2 = unavailable, 3 = timeout       |
+| `getLocationErrorMessage()` | `?string` | Human-readable error from the browser          |
+
+#### Other helpers
+
+| Method                                | Description                                          |
+| ------------------------------------- | ---------------------------------------------------- |
+| `setBrowserLocation(array $location)` | Receives the payload from JS (called automatically)  |
+| `resetBrowserLocation()`              | Clears `$browserLocation` (e.g. after saving a trip) |
+| `getBrowserLocationJson()`            | Returns the raw payload as a JSON string             |
+
+#### Lifecycle hook (`onBrowserLocationUpdated`)
+
+Implement this method on your component to react every time a new location arrives:
+
+```php
+public function onBrowserLocationUpdated(array $location): void
+{
+    // $location has the same keys as $this->browserLocation
+    $this->dispatch('location-saved');
+}
+```
+
+---
+
+### Livewire 3 & 4 — recommended attributes
+
+The trait itself does not include `#[Locked]` or `#[On]` because Livewire is an **optional** dependency. Add them directly on your component for the best security and DX:
+
+```php
+use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
+
+// Prevents the client from tampering with $browserLocation via wire:model
+#[Locked]
+public array $browserLocation = [];
+
+// Allows triggering setBrowserLocation via $dispatch('browser-location:updated', payload)
+// in addition to the default direct component.call() mechanism
+#[On('browser-location:updated')]
+public function setBrowserLocation(array $location): void
+{
+    // Call the trait's implementation:
+    $this->persistBrowserLocationIfNeeded($location);
+    $this->browserLocation = $location;
+
+    if (method_exists($this, 'onBrowserLocationUpdated')) {
+        $this->onBrowserLocationUpdated($location);
+    }
+}
+```
+
+> Both `#[Locked]` and `#[On]` work identically in Livewire 3 and Livewire 4.
+
+---
+
+### Livewire 4: using `#[On]` to react via JS dispatch
+
+An alternative to having JS call `setBrowserLocation` directly is to dispatch a browser event and let Livewire 4's `#[On]` handle it:
+
+```blade
+<x-browser-location-tracker
+    livewire-method=""
+    event-name="browser-location:updated"
+/>
+```
+
+```js
+// In your own JS you can also do:
+Livewire.dispatch("browser-location:updated", payload);
+```
+
+```php
+#[On('browser-location:updated')]
+public function setBrowserLocation(array $location): void { ... }
+```
+
+---
+
+## Compatibility matrix
+
+| Feature                                 | Plain Blade | Livewire 3 | Livewire 4 |
+| --------------------------------------- | :---------: | :--------: | :--------: |
+| `<x-browser-location-tracker>`          |     ✅      |     ✅     |     ✅     |
+| Auto-capture on page load               |     ✅      |     ✅     |     ✅     |
+| Hidden form inputs                      |     ✅      |     ✅     |     ✅     |
+| `wire:ignore` prevents DOM morphing     |      —      |     ✅     |     ✅     |
+| JS calls Livewire method on capture     |      —      |     ✅     |     ✅     |
+| Re-capture after Livewire navigate      |      —      |     ✅     |     ✅     |
+| `InteractsWithBrowserLocation` helpers  |      —      |     ✅     |     ✅     |
+| `#[Locked]` / `#[On]` on your component |      —      |     ✅     |     ✅     |
+
+---
 
 ## Middleware Validation
 
-Use `browser-location.validate` on protected routes to ensure a location is attached:
-
 ```php
-use Illuminate\Support\Facades\Route;
-
 Route::post('/checkout', CheckoutController::class)
     ->middleware('browser-location.validate');
 ```
 
-The middleware accepts the location payload from the request body, a `location` object, or an `X-Browser-Location` JSON header.
+The middleware accepts location from:
+
+- Request body fields (`latitude`, `longitude`, …)
+- A `location` object in the request body
+- An `X-Browser-Location` JSON header
+
+---
 
 ## Testing
 
 ```bash
 composer test
 ```
+
+---
 
 ## License
 

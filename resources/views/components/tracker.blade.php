@@ -473,20 +473,37 @@
     };
 
     const callLivewire = (payload) => {
+        // No-op in plain Blade (no Livewire present) or when livewireMethod is blank.
         if (!livewireMethod || typeof window.Livewire === 'undefined') {
             return;
         }
 
+        // Walk up the DOM to find the enclosing Livewire component wrapper.
         const host = root.closest('[wire\\:id]');
 
         if (!host) {
+            // The tracker is not inside a Livewire component – nothing to call.
             return;
         }
 
-        const componentId = host.getAttribute('wire:id');
-        const component = componentId ? window.Livewire.find(componentId) : null;
+        const wireId = host.getAttribute('wire:id');
 
-        if (component && typeof component.call === 'function') {
+        if (!wireId) {
+            return;
+        }
+
+        // Livewire.find() returns:
+        //   Livewire v3 – a component snapshot object with a .call() method
+        //   Livewire v4 – the $wire proxy, which also has a .call() method
+        // Both APIs are compatible here, so a single .call() covers all versions.
+        const component = window.Livewire.find(wireId);
+
+        if (!component) {
+            return;
+        }
+
+        if (typeof component.call === 'function') {
+            // Works in Livewire 3 and Livewire 4.
             component.call(livewireMethod, payload);
         }
     };
@@ -619,6 +636,9 @@
         }
     };
 
+    // Release the force-gate overlay when the page is hidden or when
+    // Livewire starts a navigation (livewire:navigate fires before the new
+    // page is painted in both Livewire 3 and Livewire 4).
     window.addEventListener('pagehide', releaseForceGate);
     document.addEventListener('livewire:navigate', releaseForceGate);
 
@@ -628,8 +648,15 @@
 
     bindPermissionEvents();
 
+    // -------------------------------------------------------------------------
+    // Public JS API
+    // Accessible via window.BrowserLocation['<componentId>'] or the
+    // convenience alias window.BrowserLocationTracker (always points to the
+    // last-initialized tracker on the page).
+    // -------------------------------------------------------------------------
     window.BrowserLocation = window.BrowserLocation || {};
     window.BrowserLocation[@js($componentId)] = {
+        /** Returns the current location data as a JSON string. */
         getJson: () => {
             const inputs = root.querySelectorAll('[data-browser-location-input]');
             const data = {};
@@ -641,17 +668,31 @@
             });
             return JSON.stringify(data);
         },
+        /** Triggers a fresh location capture (asks for permission if needed). */
         requestPermission: () => {
             captureLocation();
-        }
+        },
+        /** Manually triggers location capture – alias for requestPermission(). */
+        capture: () => {
+            captureLocation();
+        },
     };
 
     window.BrowserLocationTracker = window.BrowserLocation[@js($componentId)];
 
+    // -------------------------------------------------------------------------
+    // Auto-capture on page load and on Livewire navigation.
+    //
+    // livewire:navigated fires after Livewire 3 & 4 soft-navigation completes.
+    // In plain Blade there is no Livewire, so the event listener is harmless
+    // (it will simply never fire).
+    // -------------------------------------------------------------------------
     if (autoCapture || forcePermission) {
         captureLocation();
 
         if (autoCapture) {
+            // Re-capture after every Livewire page navigation (SPA-style).
+            // Works in Livewire 3 and Livewire 4; no-op in plain Blade.
             document.addEventListener('livewire:navigated', captureLocation);
         }
     }

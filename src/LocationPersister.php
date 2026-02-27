@@ -238,7 +238,13 @@ class LocationPersister
             (float) $this->config->get('browser-location.validation.max_accuracy_meters', 200)
         );
 
-        if ($normalized['accuracy'] !== null && $normalized['accuracy'] > $maxAccuracy) {
+        if ($normalized['accuracy'] === null) {
+            if ((bool) $this->config->get('browser-location.validation.require_accuracy', false)) {
+                throw new LocationPersistenceException(
+                    'Location accuracy is required but was not provided by the browser.'
+                );
+            }
+        } elseif ($normalized['accuracy'] > $maxAccuracy) {
             throw new LocationPersistenceException(
                 sprintf('Location accuracy %.2fm is above the allowed limit of %.2fm.', $normalized['accuracy'], $maxAccuracy)
             );
