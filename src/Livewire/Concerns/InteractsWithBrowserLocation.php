@@ -36,8 +36,8 @@ use Throwable;
  * public function setBrowserLocation(array $location): void { ... }
  * ```
  *
- * @method void onBrowserLocationUpdated(array $location)  Optional hook called after every update.
- * @method Model|null getBrowserLocationable()             Override to return the model to attach the location to.
+ * @method void onBrowserLocationUpdated(array $location) Optional hook called after every update.
+ * @method Model|null getBrowserLocationable() Override to return the model to attach the location to.
  */
 trait InteractsWithBrowserLocation
 {
