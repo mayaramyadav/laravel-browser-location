@@ -2,6 +2,14 @@
 
 All notable changes to `laravel-browser-location` will be documented in this file.
 
+## 2.1.3 - 2026-03-18
+
+### Changed
+
+- Added Laravel 13 support to the package Composer constraints.
+- Updated the README compatibility matrix to document Laravel 10 through 13 support.
+- Expanded CI to validate installs against Laravel 10, 11, 12, and 13.
+
 ## 2.1.2 - 2026-02-27
 
 **Full Changelog**: https://github.com/mayaramyadav/laravel-browser-location/compare/v2.1.0...2.1.2

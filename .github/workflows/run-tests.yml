@@ -22,9 +22,10 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
         php: [8.4]
+        laravel: [10.*, 11.*, 12.*, 13.*]
         stability: [prefer-lowest, prefer-stable]
 
-    name: P${{ matrix.php }} - ${{ matrix.stability }} - ${{ matrix.os }}
+    name: P${{ matrix.php }} - L${{ matrix.laravel }} - ${{ matrix.stability }} - ${{ matrix.os }}
 
     steps:
       - name: Checkout code
@@ -43,7 +44,7 @@ jobs:
           echo "::add-matcher::${{ runner.tool_cache }}/phpunit.json"
 
       - name: Install dependencies
-        run: composer update --${{ matrix.stability }} --prefer-dist --no-interaction
+        run: composer update --${{ matrix.stability }} --prefer-dist --no-interaction --with "illuminate/http:${{ matrix.laravel }}" --with "illuminate/support:${{ matrix.laravel }}"
 
       - name: List Installed Dependencies
         run: composer show -D

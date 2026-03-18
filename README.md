@@ -1,7 +1,7 @@
 # Laravel Browser Location
 
 Capture browser-based GPS location in Laravel using the HTML5 Geolocation API.  
-Works with **plain Blade** and **Livewire 3**.
+Works with **Laravel 10-13**, **plain Blade**, and **Livewire 3 / 4**.
 
 ## Table of Contents
 
@@ -466,6 +466,15 @@ public function setBrowserLocation(array $location): void { ... }
 ---
 
 ## Compatibility matrix
+
+### Framework support
+
+| Laravel version | Support |
+| ---------------- | :-----: |
+| 10.x             |   ✅    |
+| 11.x             |   ✅    |
+| 12.x             |   ✅    |
+| 13.x             |   ✅    |
 
 | Feature                                 | Plain Blade | Livewire 3 | Livewire 4 |
 | --------------------------------------- | :---------: | :--------: | :--------: |
